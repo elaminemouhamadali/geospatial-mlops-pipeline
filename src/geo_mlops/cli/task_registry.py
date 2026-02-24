@@ -15,9 +15,9 @@ class TaskSpec:
 
 
 _TASKS: Dict[str, TaskSpec] = {
-    "building_seg": TaskSpec("building_seg", "src.tasks.segmentation.building.tiling_factory:build_from_cfg"),
+    "building_seg": TaskSpec("building_seg", "geo_mlops.tasks.segmentation.building.tiling_factory:build_from_cfg"),
     "noise_cls": TaskSpec(
-        "noise_cls", "src.tasks.classification.noise.tiling_factory:build_from_cfg"
+        "noise_cls", "geo_mlops.tasks.classification.noise.tiling_factory:build_from_cfg"
     ),
 }
 

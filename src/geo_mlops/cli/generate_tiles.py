@@ -16,7 +16,7 @@ from geo_mlops.core.tiling.adapters.base import TaskAdapter, TilingPolicy
 from geo_mlops.core.tiling.engine import EngineConfig, RoiTilingEngine
 
 # Task registry: maps --task to a factory that builds (cfg, adapter, policy, meta)
-from cli.task_registry import build_tiling_components
+from geo_mlops.cli.task_registry import build_tiling_components
 from tqdm import tqdm
 
 ALLOWED_BUCKETS = {"SN2_buildings_train_AOI_3_Paris", "SN2_buildings_train_AOI_5_Khartoum"}
@@ -250,7 +250,7 @@ def main():
     ap.add_argument(
         "--dataset-buckets",
         nargs="+",
-        default=["Golden-Train-Regions", "Golden-Test-Regions"],
+        default=["SN2_buildings_train_AOI_3_Paris", "SN2_buildings_train_AOI_5_Khartoum"],
         help="One or more dataset buckets under --dataset_root.",
     )
     ap.add_argument(
