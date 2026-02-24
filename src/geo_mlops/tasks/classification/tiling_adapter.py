@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 import numpy as np
-from cvrs.machine_learning.core.tiling.adapters.base import (
+from geo_mlops.core.tiling.adapters.base import (
     BaseAdapter,
     DifficultyResult,
     PresenceResult,
