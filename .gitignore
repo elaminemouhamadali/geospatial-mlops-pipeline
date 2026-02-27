@@ -114,7 +114,7 @@ train_manifest.json
 # ============================================================
 
 # Raw or intermediate datasets
-data/
+sample/
 datasets/
 *.tif
 *.tiff
