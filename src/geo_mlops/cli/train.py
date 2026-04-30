@@ -7,10 +7,10 @@ import pandas as pd
 import torch
 
 from geo_mlops.core.io.train_io import resolve_training_inputs
-from geo_mlops.models.engine import train_one_run
+from geo_mlops.core.training.engine import train_one_run
 from geo_mlops.tasks.segmentation.building.dataset import BuildingSegWithContextDataset, BuildingSegConfig
-from geo_mlops.tasks.segmentation.building.model import build_building_model  # you create this tiny builder
-from geo_mlops.tasks.segmentation.building.loss import build_building_loss    # tiny builder
+from geo_mlops.tasks.segmentation.building.model_factory import build_model  # you create this tiny builder
+from geo_mlops.tasks.segmentation.building.losses import build_building_loss    # tiny builder
 
 
 def main() -> None:
@@ -78,7 +78,7 @@ def main() -> None:
     # -----------------------------
     device = torch.device(args.device if (args.device != "cuda" or torch.cuda.is_available()) else "cpu")
 
-    model = build_building_model(train_inputs.train_cfg).to(device)
+    model = build_model(train_inputs.train_cfg).to(device)
     loss_fn = build_building_loss(train_inputs.train_cfg)
 
     # -----------------------------
