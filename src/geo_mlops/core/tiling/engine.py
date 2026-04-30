@@ -16,7 +16,6 @@ from geo_mlops.core.tiling.adapters.base import (
 )
 from geo_mlops.core.tiling.utils import (
     _relaxed_lookup,
-    compute_gsd_from_gcps,
     gsd_from_epsg4326,
     gen_tiles_cover,
 )
