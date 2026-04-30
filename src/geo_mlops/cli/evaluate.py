@@ -15,7 +15,7 @@ from geo_mlops.core.contracts.eval_contract import (
 )
 from geo_mlops.core.io.eval_io import summarize_eval_contract, write_eval_contract
 from geo_mlops.core.io.tile_io import load_tiles_contract
-from geo_mlops.models.inference import load_groups_file, run_evaluation
+from geo_mlops.core.evaluation import load_groups_file, run_evaluation
 
 
 def build_argparser() -> argparse.ArgumentParser:
