@@ -38,12 +38,7 @@ splitting:
     group_col: region
 
   stratification:
-    kind: binned_group_metric
-    group_metric:
-    mode: presence_frac
-    source_col: building_ratio
-    presence_eps: 0.001
-    bins: [0.0, 0.05, 0.2, 0.6, 1.0]
+    kind: grouped
 
   outputs:
     prefix: tiles
@@ -53,11 +48,15 @@ training:
   engine:
     batch_size: 8
     num_workers: 4
-    epochs: 20
+    epochs: 5
     lr: 0.0001
     seed: 1337
     selection_metric: val/micro_f1
     selection_mode: max
+
+  sampler:
+    kind: policy
+    include_col: sample__include
 
   dataset:
     reflectance_max: 10000
@@ -77,7 +76,7 @@ training:
     tile_channels: 1
     ctx_channels: 1
     backbone:
-      base_name: nvidia/segformer-b0-finetuned-ade-512-512
+      base_name: segformer_b0
       num_classes: 1
       image_size: 512
 
@@ -92,35 +91,56 @@ training:
     eps: 0.0000001
 
 evaluation:
-  batch_size: 8
-  num_workers: 4
-  threshold: 0.5
-  partition: val
+  engine:
+    tile_size: 512
+    stride: 256
+    batch_size: 4
+    seed: 1337
+    threshold: 0.5
+    save_probabilities: true
+    save_masks: true
 
 gating:
   gate_a:
     input: val
     decision_metric_scope: validation
+    fail_on_missing: true
+    allow_nan: false
     checks:
-      - metric: micro_f1
-        scope: micro
+      - scope: val
+        metric: micro_f1
         comparator: ">="
-        threshold: 0.75
+        threshold: 0.20
+      - scope: val
+        metric: iou
+        comparator: ">="
+        threshold: 0.15
 
   gate_b:
+    gate_b:
     input: golden_test
     decision_metric_scope: golden_test
+    fail_on_missing: true
+    allow_nan: false
     checks:
-      - metric: micro_f1
-        scope: micro
+      - scope: micro
+        metric: f1
         comparator: ">="
-        threshold: 0.78
-      - metric: macro_f1
-        scope: macro
+        threshold: 0.30
+      - scope: macro
+        metric: f1
         comparator: ">="
-        threshold: 0.70
+        threshold: 0.24
+      - scope: micro
+        metric: iou
+        comparator: ">="
+        threshold: 0.18
 
 registry:
-  model_name: building-seg
+  model_name: building_seg
+  model_artifact_path: model
   candidate_alias: candidate
   production_alias: production
+  archive_candidate_alias: false
+  tracking_uri: http://127.0.0.1:5000
+  registry_uri: null

@@ -71,6 +71,10 @@ training:
     selection_metric: val/micro_f1
     selection_mode: max
 
+  sampler:
+    kind: policy
+    include_col: sample__include
+
   dataset:
     reflectance_max: 10000
     use_context: true
