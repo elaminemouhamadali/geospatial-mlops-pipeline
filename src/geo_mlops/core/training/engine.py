@@ -9,8 +9,8 @@ import torch
 from torch.utils.data import DataLoader
 
 from geo_mlops.core.contracts.train_contract import TrainInputs, TrainOutputs
-from geo_mlops.core.utils.random import seed_everything
-
+from geo_mlops.core.utils.random import _seed_everything
+from geo_mlops.core.training.callbacks import CallbackList, TrainingCallback
 
 @dataclass(frozen=True)
 class TrainConfig:
@@ -50,11 +50,13 @@ def train_one_run(
     forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
     metrics_fn: Optional[Callable[[Any, Dict[str, Any]], Dict[str, float]]] = None,
     optimizer_factory: Optional[Callable[[torch.nn.Module, TrainConfig], torch.optim.Optimizer]] = None,
+    callbacks: Optional[list[TrainingCallback]] = None,
+    callback_context: Optional[Dict[str, Any]] = None,
 ) -> TrainOutputs:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    seed_everything(cfg.seed)
+    _seed_everything(cfg.seed)
     model.to(device)
 
     train_loader = DataLoader(
@@ -86,6 +88,28 @@ def train_one_run(
     history: Dict[str, Any] = {}
 
     model_path = out_dir / "model.pt"
+
+    callback_list = CallbackList(callbacks)
+
+    context: Dict[str, Any] = {
+        **(callback_context or {}),
+        "task": train_inputs.task,
+        "out_dir": out_dir,
+        "device": str(device),
+        "model": model,
+        "train_inputs": train_inputs,
+        "engine_cfg": {
+            "batch_size": cfg.batch_size,
+            "num_workers": cfg.num_workers,
+            "epochs": cfg.epochs,
+            "lr": cfg.lr,
+            "seed": cfg.seed,
+            "selection_metric": cfg.selection_metric,
+            "selection_mode": cfg.selection_mode,
+        },
+    }
+
+    callback_list.on_train_start(context)
 
     for epoch in range(1, cfg.epochs + 1):
         model.train()
@@ -139,6 +163,12 @@ def train_one_run(
             **_prefix_metrics("val", val_metrics),
         }
 
+        callback_list.on_epoch_end(
+            epoch=epoch,
+            metrics=epoch_metrics,
+            context=context,
+        )
+
         history[f"epoch_{epoch}"] = epoch_metrics
 
         if cfg.selection_metric not in epoch_metrics:
@@ -159,6 +189,15 @@ def train_one_run(
             best_epoch = epoch
             torch.save(model.state_dict(), model_path)
 
+            context["best_metric_value"] = best_metric_value
+            context["best_epoch"] = best_epoch
+            context["selection_metric"] = cfg.selection_metric
+
+            callback_list.on_checkpoint_saved(
+                checkpoint_path=model_path,
+                context=context,
+            )
+
     metrics_path = out_dir / "metrics.json"
 
     metrics_payload = {
@@ -172,6 +211,29 @@ def train_one_run(
     metrics_path.write_text(json.dumps(metrics_payload, indent=2))
 
     train_manifest_path = out_dir / "train_manifest.json"
+
+    outputs = TrainOutputs(
+        run_dir=out_dir,
+        model_path=model_path,
+        metrics_path=metrics_path,
+        train_manifest_path=train_manifest_path,
+    )
+
+    final_context = {
+        **context,
+        "metrics_path": metrics_path,
+        "train_manifest_path": train_manifest_path,
+        "model_path": model_path,
+        "best_metric_value": best_metric_value,
+        "best_epoch": best_epoch,
+    }
+
+    callback_list.on_train_end(
+        outputs=outputs,
+        context=final_context,
+    )
+
+    callback_state = callback_list.state_dict()
 
     manifest = {
         "task": train_inputs.task,
@@ -187,16 +249,12 @@ def train_one_run(
         "selection_mode": cfg.selection_mode,
         "best_metric_value": best_metric_value,
         "best_epoch": best_epoch,
+        "tracking": callback_state,
     }
 
     train_manifest_path.write_text(json.dumps(manifest, indent=2))
 
-    return TrainOutputs(
-        run_dir=out_dir,
-        model_path=model_path,
-        metrics_path=metrics_path,
-        train_manifest_path=train_manifest_path,
-    )
+    return outputs
 
 
 def _infer_batch_size(batch: Dict[str, Any]) -> int:
