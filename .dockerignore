@@ -1,0 +1,74 @@
+# Git
+.git
+.gitignore
+
+# Python cache/build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Test/lint/type caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.conda/
+*.env
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Local dependency discovery files
+requirements-freeze.txt
+requirements-top-level.txt
+requirements-detected.txt
+
+# Data/artifacts/outputs
+data/
+datasets/
+outputs/
+runs/
+mlruns/
+artifacts/
+checkpoints/
+models/
+logs/
+
+# Large geospatial/model artifacts
+*.tif
+*.tiff
+*.vrt
+*.jp2
+*.ntf
+*.npy
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.tar
+*.tar.gz
+*.zip
+
+# Jupyter
+.ipynb_checkpoints/

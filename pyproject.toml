@@ -40,7 +40,7 @@ ml = [
 ]
 
 ray = [
-    "ray[train,tune]>=2.9",
+    "ray[default,train,tune]>=2.9",
 ]
 
 dev = [
