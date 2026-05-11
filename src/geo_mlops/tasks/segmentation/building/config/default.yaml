@@ -28,18 +28,16 @@ tiling:
     csv_name_default: building_tiles_regular.csv
 
 splitting:
-  stage:
+  engine:
+    policy: grouped
     seed: 1337
     splits:
       train: 0.5
       val: 0.5
 
-  grouping:
     group_col: region
-
-  stratification:
-    kind: grouped
-
+    predefined_col: split
+    
   outputs:
     prefix: tiles
     group_list_prefix: regions
@@ -90,15 +88,21 @@ training:
     foreground_label: 1
     eps: 0.0000001
 
-evaluation:
+inference:
   engine:
     tile_size: 512
     stride: 256
     batch_size: 4
     seed: 1337
-    threshold: 0.5
     save_probabilities: true
-    save_masks: true
+    save_logits: true
+
+evaluation:
+  threshold: 0.5
+  foreground_label: 1
+  eps: 0.0000001
+  pareto_top_k: 50
+  require_target: true
 
 gating:
   gate_a:

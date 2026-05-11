@@ -9,7 +9,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 
-from geo_mlops.core.data.base import BaseRasterTileDataset, TileRecord
+from geo_mlops.core.data.dataset import BaseRasterTileDataset, TileRecord
 from geo_mlops.core.utils.windows import _to_channels
 
 

@@ -53,22 +53,19 @@ def build_metrics_fn(train_cfg: Dict[str, Any]):
     return metrics_fn
 
 
-# -----------------------------------------------------------------------------
-# Formal full-scene golden evaluation metrics
-# -----------------------------------------------------------------------------
 class BuildingSegmentationEvalAccumulator:
     """
     Formal evaluation accumulator for full-scene building segmentation.
 
     Responsibilities:
-      - compute per-scene binary segmentation metrics
+      - consume already-loaded target/probability/mask arrays
+      - compute per-scene metrics
       - aggregate global pixel-count micro metrics
       - aggregate per-scene macro metrics
-      - write task-specific analytics tables, including Pareto/hardest images
+      - aggregate per-ROI metrics
+      - write Pareto/hardest-scene analytics tables
 
-    Core evaluation engine calls:
-      update(scene=..., arrays=..., prediction=..., artifacts=...)
-      finalize(out_dir=...)
+    File loading belongs outside this class.
     """
 
     def __init__(self, metrics_cfg: Optional[Dict[str, Any]] = None) -> None:
@@ -77,78 +74,65 @@ class BuildingSegmentationEvalAccumulator:
         self.eps = float(metrics_cfg.get("eps", 1e-7))
         self.pareto_top_k = int(metrics_cfg.get("pareto_top_k", 50))
 
-        # Optional: ignore images without GT instead of failing.
-        self.require_target = bool(metrics_cfg.get("require_target", True))
-
         self.global_counts: Dict[str, int] = _empty_counts()
         self.rows: List[Dict[str, Any]] = []
         self.warnings: List[str] = []
 
-    def update(
+    def update_from_arrays(
         self,
         *,
-        scene: Any,
-        arrays: Any,
-        prediction: Any,
-        artifacts: Any,
+        scene_id: str,
+        roi: str,
+        sub_roi: str,
+        target: np.ndarray,
+        probability: np.ndarray,
+        mask: np.ndarray,
+        metadata: Mapping[str, Any] | None = None,
     ) -> Dict[str, Any]:
-        """
-        Update metrics from one full-scene prediction.
+        metadata = metadata or {}
 
-        Args are intentionally typed as Any to avoid importing core evaluation
-        dataclasses into this task metrics file. Expected fields:
-          - scene.scene_id / region / subregion
-          - arrays.target
-          - prediction.mask
-          - prediction.probability
-          - artifacts.probability_path / mask_path
-        """
-        if getattr(arrays, "target", None) is None:
-            msg = f"Scene {scene.scene_id!r} has no target/GT mask."
-            if self.require_target:
-                raise ValueError(msg)
+        target_bool = _to_numpy_bool(target)
+        pred_bool = _to_numpy_bool(mask)
 
-            self.warnings.append(msg)
-            row = {
-                "scene_id": scene.scene_id,
-                "has_target": False,
-                "warning": msg,
-            }
-            self.rows.append(row)
-            return row
+        prob = np.asarray(probability).astype(np.float32)
+        if prob.ndim == 3 and prob.shape[0] == 1:
+            prob = prob[0]
 
-        target = _to_numpy_bool(arrays.target)
-        pred = _to_numpy_bool(prediction.mask)
-
-        if pred.shape != target.shape:
+        if pred_bool.shape != target_bool.shape:
             raise ValueError(
-                f"Prediction/target shape mismatch for scene={scene.scene_id!r}: "
-                f"pred={pred.shape}, target={target.shape}"
+                f"Prediction/target shape mismatch for scene={scene_id!r}: "
+                f"pred={pred_bool.shape}, target={target_bool.shape}"
             )
 
-        counts = _numpy_binary_counts(pred=pred, target=target)
+        if prob.shape != target_bool.shape:
+            raise ValueError(
+                f"Probability/target shape mismatch for scene={scene_id!r}: "
+                f"prob={prob.shape}, target={target_bool.shape}"
+            )
+
+        counts = _numpy_binary_counts(pred=pred_bool, target=target_bool)
         self.global_counts = _add_counts(self.global_counts, counts)
 
         metrics = _metrics_from_counts(counts, eps=self.eps)
-
-        prob = getattr(prediction, "probability", None)
         prob_stats = _probability_stats(prob)
 
         row: Dict[str, Any] = {
-            "scene_id": scene.scene_id,
-            "region": getattr(scene, "region", "") or "",
-            "subregion": getattr(scene, "subregion", "") or "",
+            "scene_id": scene_id,
+            "roi": roi,
+            "sub_roi": sub_roi,
             "has_target": True,
             **counts,
             **metrics,
-            "gt_foreground_pixels": int(target.sum()),
-            "pred_foreground_pixels": int(pred.sum()),
-            "gt_foreground_frac": float(target.mean()),
-            "pred_foreground_frac": float(pred.mean()),
+            "gt_foreground_pixels": int(target_bool.sum()),
+            "pred_foreground_pixels": int(pred_bool.sum()),
+            "gt_foreground_frac": float(target_bool.mean()),
+            "pred_foreground_frac": float(pred_bool.mean()),
             "false_positive_pixels": int(counts["fp"]),
             "false_negative_pixels": int(counts["fn"]),
-            "probability_path": str(getattr(artifacts, "probability_path", "") or ""),
-            "mask_path": str(getattr(artifacts, "mask_path", "") or ""),
+            "pan_path": str(metadata.get("pan_path", "")),
+            "gt_path": str(metadata.get("gt_path", "")),
+            "probability_path": str(metadata.get("probability_path", "")),
+            "logits_path": str(metadata.get("logits_path", "")),
             **prob_stats,
         }
 
@@ -165,12 +149,23 @@ class BuildingSegmentationEvalAccumulator:
         per_image_csv = tables_dir / "building_per_image_metrics.csv"
         df.to_csv(per_image_csv, index=False)
 
+        roi_df = self._roi_metrics(df)
+        roi_csv = tables_dir / "building_per_roi_metrics.csv"
+        roi_df.to_csv(roi_csv, index=False)
+
         pareto_df = self._build_pareto_table(df)
         pareto_csv = tables_dir / "building_pareto_images.csv"
         pareto_df.to_csv(pareto_csv, index=False)
 
         micro = _metrics_from_counts(self.global_counts, eps=self.eps)
-        macro = self._macro_metrics(df)
+        scene_macro = self._macro_metrics(df)
+        roi_macro = self._macro_metrics(roi_df)
+
+        metrics: Dict[str, float] = {
+            **{f"micro/{name}": float(value) for name, value in micro.items()},
+            **{f"scene_macro/{name}": float(value) for name, value in scene_macro.items()},
+            **{f"roi_macro/{name}": float(value) for name, value in roi_macro.items()},
+        }
 
         analytics = {
             "num_images_with_target": int(df["has_target"].sum()) if "has_target" in df.columns else 0,
@@ -180,12 +175,10 @@ class BuildingSegmentationEvalAccumulator:
         }
 
         return {
-            "metrics": {
-                "micro": micro,
-                "macro": macro,
-            },
+            "metrics": metrics,
             "artifacts": {
                 "building_per_image_metrics_csv": str(per_image_csv),
+                "building_per_roi_metrics_csv": str(roi_csv),
                 "building_pareto_images_csv": str(pareto_csv),
             },
             "analytics": analytics,
@@ -210,10 +203,48 @@ class BuildingSegmentationEvalAccumulator:
 
         for col in metric_cols:
             if col in df.columns:
-                values = pd.to_numeric(df[col], errors="coerce")
-                out[col] = float(values.mean())
+                values = pd.to_numeric(df[col], errors="coerce").dropna()
+                if not values.empty:
+                    out[col] = float(values.mean())
 
         return out
+
+    def _roi_metrics(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return pd.DataFrame()
+
+        if "has_target" in df.columns:
+            df = df[df["has_target"] == True].copy()  # noqa: E712
+
+        if df.empty or "roi" not in df.columns:
+            return pd.DataFrame()
+
+        rows: List[Dict[str, Any]] = []
+
+        for roi, g in df.groupby("roi"):
+            counts = {
+                "tp": int(g["tp"].sum()),
+                "fp": int(g["fp"].sum()),
+                "fn": int(g["fn"].sum()),
+                "tn": int(g["tn"].sum()),
+            }
+
+            metrics = _metrics_from_counts(counts, eps=self.eps)
+
+            rows.append(
+                {
+                    "roi": roi,
+                    "num_scenes": int(len(g)),
+                    **counts,
+                    **metrics,
+                    "gt_foreground_pixels": int(g["gt_foreground_pixels"].sum()),
+                    "pred_foreground_pixels": int(g["pred_foreground_pixels"].sum()),
+                    "false_positive_pixels": int(g["false_positive_pixels"].sum()),
+                    "false_negative_pixels": int(g["false_negative_pixels"].sum()),
+                }
+            )
+
+        return pd.DataFrame(rows)
 
     def _build_pareto_table(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty:
@@ -227,7 +258,6 @@ class BuildingSegmentationEvalAccumulator:
         if df.empty:
             return df
 
-        # Lower f1/iou are worse. Higher fp/fn are worse.
         if "f1" in df.columns:
             df["rank_low_f1"] = pd.to_numeric(
                 df["f1"], errors="coerce"
@@ -257,9 +287,6 @@ class BuildingSegmentationEvalAccumulator:
         return df.head(self.pareto_top_k)
 
 
-# -----------------------------------------------------------------------------
-# Shared helpers
-# -----------------------------------------------------------------------------
 def _empty_counts() -> Dict[str, int]:
     return {
         "tp": 0,
@@ -275,27 +302,6 @@ def _add_counts(a: Mapping[str, int], b: Mapping[str, int]) -> Dict[str, int]:
         "fp": int(a.get("fp", 0)) + int(b.get("fp", 0)),
         "fn": int(a.get("fn", 0)) + int(b.get("fn", 0)),
         "tn": int(a.get("tn", 0)) + int(b.get("tn", 0)),
-    }
-
-
-def _torch_binary_counts(
-    *,
-    pred: torch.Tensor,
-    target: torch.Tensor,
-) -> Dict[str, int]:
-    pred = pred.bool()
-    target = target.bool()
-
-    tp = torch.logical_and(pred, target).sum()
-    fp = torch.logical_and(pred, ~target).sum()
-    fn = torch.logical_and(~pred, target).sum()
-    tn = torch.logical_and(~pred, ~target).sum()
-
-    return {
-        "tp": int(tp.detach().cpu()),
-        "fp": int(fp.detach().cpu()),
-        "fn": int(fn.detach().cpu()),
-        "tn": int(tn.detach().cpu()),
     }
 
 
@@ -346,7 +352,6 @@ def _to_numpy_bool(x: Any) -> np.ndarray:
 
     arr = np.asarray(x)
 
-    # If [1,H,W], squeeze to [H,W].
     if arr.ndim == 3 and arr.shape[0] == 1:
         arr = arr[0]
 
@@ -372,4 +377,25 @@ def _probability_stats(probability: Any) -> Dict[str, float]:
         "prob_std": float(np.nanstd(arr)),
         "prob_min": float(np.nanmin(arr)),
         "prob_max": float(np.nanmax(arr)),
+    }
+
+
+def _torch_binary_counts(
+    *,
+    pred: torch.Tensor,
+    target: torch.Tensor,
+) -> Dict[str, int]:
+    pred = pred.bool()
+    target = target.bool()
+
+    tp = torch.logical_and(pred, target).sum()
+    fp = torch.logical_and(pred, ~target).sum()
+    fn = torch.logical_and(~pred, target).sum()
+    tn = torch.logical_and(~pred, ~target).sum()
+
+    return {
+        "tp": int(tp.detach().cpu()),
+        "fp": int(fp.detach().cpu()),
+        "fn": int(fn.detach().cpu()),
+        "tn": int(tn.detach().cpu()),
     }
