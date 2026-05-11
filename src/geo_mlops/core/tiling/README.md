@@ -44,7 +44,7 @@ rows → DataFrame → master CSV
 
 ## 3. Core Tiling Components
 
-### 3.1 `EngineConfig`
+### 3.1 `TilingEngineConfig`
 
 **Location:** `core/tiling/engine.py`
 
@@ -184,7 +184,7 @@ Responsibilities:
 
 * parse CLI args
 * load task tiling factory via `task_registry`
-* construct `EngineConfig`, `TaskAdapter`, `TilingPolicy`
+* construct `TilingEngineConfig`, `TaskAdapter`, `TilingPolicy`
 * scan datasets using `RoiTilingEngine`
 * aggregate rows into DataFrames
 * write master CSV
