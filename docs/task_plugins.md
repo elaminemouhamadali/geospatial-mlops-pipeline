@@ -51,7 +51,7 @@ tasks/segmentation/building/
     adapter.py
       Building-specific tiling adapter and CSV columns.
     factory.py
-      Converts config into EngineConfig, adapter, and policy.
+      Converts config into TilingEngineConfig, adapter, and policy.
 
   data/
     dataset.py
