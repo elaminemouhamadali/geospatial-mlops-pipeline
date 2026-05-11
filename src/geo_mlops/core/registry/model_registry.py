@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, asdict
+from geo_mlops.core.utils.dataclasses import _load_json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import mlflow
 from mlflow.tracking import MlflowClient
+
+REGISTRY_MANIFEST_NAME = "registry_result.json"
 
 
 @dataclass(frozen=True)
@@ -21,18 +24,6 @@ class RegistryResult:
     registry_uri: Optional[str]
     tracking_uri: Optional[str]
     details: Dict[str, Any]
-
-
-def _load_json(path: str | Path) -> Dict[str, Any]:
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"JSON file not found: {p}")
-
-    obj = json.loads(p.read_text())
-    if not isinstance(obj, dict):
-        raise ValueError(f"Expected JSON object at root of {p}")
-
-    return obj
 
 
 def _require_gate_passed(gate_contract_path: str | Path) -> Dict[str, Any]:
@@ -59,7 +50,7 @@ def _write_registry_result(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    path = out / "registry_result.json"
+    path = out / REGISTRY_MANIFEST_NAME
     path.write_text(json.dumps(asdict(result), indent=2))
     return path
 
