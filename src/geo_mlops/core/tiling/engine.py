@@ -8,7 +8,6 @@ import rasterio
 
 from geo_mlops.core.tiling.adapters.base import (
     SceneArrays,
-    SceneInputs,
     TaskAdapter,
     TileWindow,
     TilingPolicy,
@@ -190,17 +189,6 @@ class RoiTilingEngine:
         else:
             pred2d = None
 
-        scene_inputs = SceneInputs(
-            roi=scene.roi,
-            sub_roi=scene.sub_roi,
-            stem=scene.stem,
-            pan_path=scene.pan_path,
-            gt_path=scene.gt_path,
-            pred_path=scene.pred_path,
-            context_path=scene.context_path,
-            scene_id=scene.scene_id,
-        )
-
         arr = SceneArrays(
             H=int(H),
             W=int(W),
@@ -267,7 +255,7 @@ class RoiTilingEngine:
 
             include, extra = self.policy.decide_include(
                 adapter=self.adapter,
-                scene=scene_inputs,
+                scene=scene,
                 arr=arr,
                 tw=win,
                 sub_roi_pred_missing=sub_roi_pred_missing,
@@ -285,8 +273,8 @@ class RoiTilingEngine:
             cy = 0.5 * (win.y0 + win.y1)
 
             row: Dict[str, Any] = dict(
-                roi=scene.roi,
-                sub_roi=scene.sub_roi,
+                roi=scene.region,
+                sub_roi=scene.subregion,
                 scene_id=scene.scene_id,
                 stem=scene.stem,
                 image_src=str(scene.pan_path),
@@ -317,7 +305,7 @@ class RoiTilingEngine:
             row.update(extra)
             row.update(
                 self.adapter.build_task_row(
-                    scene=scene_inputs,
+                    scene=scene,
                     arr=arr,
                     tw=win,
                 )

@@ -36,7 +36,7 @@ def load_tiles_contract(manifest_path: Path) -> TilesContract:
         tiles_dir_path=Path(data["tiles_dir_path"]),
         master_csv_path=Path(data["master_csv_path"]),
         datasets_root_path=Path(data["datasets_root_path"]),
-        dataset_buckets=list(data["dataset_buckets"]),
+        dataset_rois=list(data["dataset_rois"]),
         tile_engine_cfg=dict(data["tile_engine_cfg"]),
         adapter=dict(data["adapter"]),
         policy=dict(data["policy"]),

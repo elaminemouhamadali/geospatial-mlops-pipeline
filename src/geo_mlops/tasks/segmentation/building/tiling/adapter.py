@@ -7,10 +7,10 @@ import numpy as np
 from geo_mlops.core.tiling.adapters.base import (
     DifficultyResult,
     SceneArrays,
-    SceneInputs,
     TileWindow,
 )
 from geo_mlops.tasks.segmentation.segmentation_adapter import SegmentationAdapter
+from geo_mlops.core.data.types import DiscoveredScene
 
 
 @dataclass
@@ -39,7 +39,7 @@ class BuildingSegmentationAdapter(SegmentationAdapter):
     def fg_from_mask(self, mask2d: np.ndarray) -> np.ndarray:
         return mask2d == int(self.class_of_interest_id)
 
-    def difficulty(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> DifficultyResult:
+    def difficulty(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> DifficultyResult:
         _ = scene
 
         # Keep adapter resilient; strict hard-mining policy will raise before this if preds are required.
@@ -88,7 +88,7 @@ class BuildingSegmentationAdapter(SegmentationAdapter):
 
         return DifficultyResult(value=value, details=details)
 
-    def build_task_row(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
         _ = scene
 
         # Use base presence (foreground ratio); we only rename columns for building

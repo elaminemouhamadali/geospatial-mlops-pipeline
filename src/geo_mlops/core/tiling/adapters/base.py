@@ -3,26 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
-
+from geo_mlops.core.data.types import DiscoveredScene
 import numpy as np
-
-
-# -----------------------------
-# Shared data bundles (engine + adapters + policies)
-# -----------------------------
-@dataclass(frozen=True)
-class SceneInputs:
-    roi: str
-    sub_roi: str
-    stem: str
-
-    pan_path: Path
-    gt_path: Optional[Path]
-    pred_path: Optional[Path]
-    context_path: Optional[Path]
-
-    scene_id: str
-
 
 @dataclass
 class SceneArrays:
@@ -117,13 +99,13 @@ class TaskAdapter(Protocol):
     # -----------------------
     # Tile-level metrics for universal policies
     # -----------------------
-    def gt_presence(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> PresenceResult: ...
-    def difficulty(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> DifficultyResult: ...
+    def gt_presence(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> PresenceResult: ...
+    def difficulty(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> DifficultyResult: ...
 
     # -----------------------
     # CSV task columns
     # -----------------------
-    def build_task_row(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]: ...
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]: ...
 
 
 class TilingPolicy(Protocol):
@@ -138,7 +120,7 @@ class TilingPolicy(Protocol):
         self,
         *,
         adapter: TaskAdapter,
-        scene: SceneInputs,
+        scene: DiscoveredScene,
         arr: SceneArrays,
         tw: TileWindow,
         sub_roi_pred_missing: bool,

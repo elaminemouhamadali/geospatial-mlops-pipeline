@@ -5,10 +5,10 @@ from typing import Any, Dict, Tuple
 
 from geo_mlops.core.tiling.adapters.base import (
     SceneArrays,
-    SceneInputs,
     TaskAdapter,
     TileWindow,
 )
+from geo_mlops.core.data.types import DiscoveredScene
 
 
 # -------------------------
@@ -37,12 +37,12 @@ class AllPolicy:
         self,
         *,
         adapter: TaskAdapter,
-        scene: SceneInputs,
+        scene: DiscoveredScene,
         arr: SceneArrays,
         tw: TileWindow,
-        roi_pred_missing: bool,
+        sub_roi_pred_missing: bool,
     ) -> Tuple[bool, Dict[str, Any]]:
-        _ = (adapter, scene, arr, tw, roi_pred_missing)
+        _ = (adapter, scene, arr, tw, sub_roi_pred_missing)
 
         extra = {
             f"{self.sample_prefix}include": True,
@@ -91,12 +91,12 @@ class RegularPolicy:
         self,
         *,
         adapter: TaskAdapter,
-        scene: SceneInputs,
+        scene: DiscoveredScene,
         arr: SceneArrays,
         tw: TileWindow,
-        roi_pred_missing: bool,
+        sub_roi_pred_missing: bool,
     ) -> Tuple[bool, Dict[str, Any]]:
-        _ = roi_pred_missing
+        _ = sub_roi_pred_missing
 
         pres = adapter.gt_presence(scene=scene, arr=arr, tw=tw)
 
@@ -173,12 +173,12 @@ class HardMiningPolicy:
         self,
         *,
         adapter: TaskAdapter,
-        scene: SceneInputs,
+        scene: DiscoveredScene,
         arr: SceneArrays,
         tw: TileWindow,
-        roi_pred_missing: bool,
+        sub_roi_pred_missing: bool,
     ) -> Tuple[bool, Dict[str, Any]]:
-        if roi_pred_missing:
+        if sub_roi_pred_missing:
             raise FileNotFoundError(
                 "HardMiningPolicy requires predictions, but preds directory is missing for ROI: "
                 f"{scene.region}/{scene.subregion}"

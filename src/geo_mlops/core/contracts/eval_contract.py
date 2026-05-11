@@ -25,3 +25,4 @@ class EvalContract:
 
     metrics: Dict[str, float]
     artifacts: Dict[str, Any]
+    analytics: Dict[str, Any]

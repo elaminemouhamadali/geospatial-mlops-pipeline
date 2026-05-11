@@ -9,9 +9,9 @@ from geo_mlops.core.tiling.adapters.base import (
     DifficultyResult,
     PresenceResult,
     SceneArrays,
-    SceneInputs,
     TileWindow,
 )
+from geo_mlops.core.data.types import DiscoveredScene
 
 
 @dataclass
@@ -63,7 +63,7 @@ class SegmentationAdapter(BaseAdapter):
     # -----------------------------
     # Tile-level metrics for universal policies
     # -----------------------------
-    def gt_presence(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> PresenceResult:
+    def gt_presence(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> PresenceResult:
         """
         Presence = foreground ratio in gt (0..1).
         """
@@ -92,7 +92,7 @@ class SegmentationAdapter(BaseAdapter):
             },
         )
 
-    def difficulty(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> DifficultyResult:
+    def difficulty(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> DifficultyResult:
         """
         Default disagreement metric:
           - change_ratio = mean(pred_fg != gt_fg) over the tile
@@ -151,7 +151,7 @@ class SegmentationAdapter(BaseAdapter):
     # -----------------------------
     # Task-specific CSV columns
     # -----------------------------
-    def build_task_row(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
         """
         Base class does not impose any task columns.
         Concrete task adapters should override this.

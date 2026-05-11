@@ -9,9 +9,9 @@ from geo_mlops.core.tiling.adapters.base import (
     DifficultyResult,
     PresenceResult,
     SceneArrays,
-    SceneInputs,
     TileWindow,
 )
+from geo_mlops.core.data.types import DiscoveredScene
 
 
 @dataclass
@@ -87,7 +87,7 @@ class ClassificationAdapter(BaseAdapter):
     # -----------------------------
     # Tile-level metrics for universal policies
     # -----------------------------
-    def gt_presence(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> PresenceResult:
+    def gt_presence(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> PresenceResult:
         """
         Default presence signal for classification: 1.0 if label != 0 else 0.0.
 
@@ -117,7 +117,7 @@ class ClassificationAdapter(BaseAdapter):
             },
         )
 
-    def difficulty(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> DifficultyResult:
+    def difficulty(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> DifficultyResult:
         """
         Default difficulty for classification: mismatch (0/1) between reduced labels.
         This works well for hard-example mining where we have per-pixel predicted labels
@@ -151,7 +151,7 @@ class ClassificationAdapter(BaseAdapter):
     # -----------------------------
     # Task-specific CSV columns
     # -----------------------------
-    def build_task_row(self, *, scene: SceneInputs, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
         """
         Base class does not impose any task columns.
         Concrete task adapters should override this.

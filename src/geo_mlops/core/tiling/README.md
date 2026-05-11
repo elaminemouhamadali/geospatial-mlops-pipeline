@@ -30,7 +30,7 @@ The output of the stage is:
 Datasets root
    ↓
 [ core/tiling/engine.py ]
-   ↓  (TileWindow + SceneInputs)
+   ↓  (TileWindow + DiscoveredScene)
 [ TaskAdapter ]
    ↓  (task semantics)
 [ TilingPolicy ]
