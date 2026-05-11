@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, Dict, Any
 import torch
 
 
@@ -26,3 +26,16 @@ def _heuristic_initial_bs(free_bytes: Optional[int], max_bs: int) -> int:
     if gb < 11.0:
         return min(32, max_bs)
     return max_bs
+
+def _resolve_device(device_arg: str) -> torch.device:
+    if device_arg == "cuda" and not torch.cuda.is_available():
+        print("CUDA requested but unavailable; falling back to CPU.")
+        return torch.device("cpu")
+    return torch.device(device_arg)
+
+
+def _infer_batch_size(batch: Dict[str, Any]) -> int:
+    for value in batch.values():
+        if torch.is_tensor(value):
+            return int(value.shape[0])
+    raise ValueError("Could not infer batch size from batch; no tensor values found.")
