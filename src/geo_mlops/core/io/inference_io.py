@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
 from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
 from geo_mlops.core.contracts.inference_contract import (
     InferenceContract,
