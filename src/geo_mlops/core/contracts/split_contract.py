@@ -12,18 +12,18 @@ from typing import Any, Dict, List
 class SplitContract:
     """
     Output of make_splits stage as consumed by training.
-
     This is intentionally task-agnostic. Tasks may interpret the fields
     (e.g., water uses region lists to filter tiles), but core doesn't.
     """
-
-    split_dir: Path
+    task: str
+    split_dir_path: Path
 
     train_regions: List[str]
     val_regions: List[str]
 
+    split_cfg: Dict[str, List[Any]]
+
     # optional typed partitions (e.g., water uses val_with_water/val_no_water)
     extra_partitions: Dict[str, List[str]]
 
-    # optional split metadata from split.json
-    meta: Dict[str, Any]
+    artifacts: Dict[str, str]

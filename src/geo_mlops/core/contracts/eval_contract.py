@@ -2,26 +2,26 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
-
-EVAL_SCHEMA_VERSION_V1 = "eval.v1"
+from typing import Any, Dict
 
 
 @dataclass(frozen=True)
 class EvalContract:
-    eval_dir: Path
-    schema_version: str
+    """
+    Output of the evaluation stage as consumed by gating and downstream stages.
 
+    Canonical artifacts:
+      - metrics.json: flat gate-ready metrics
+      - tables/per_scene_metrics.csv: per-scene diagnostics
+      - predictions/: saved masks/probabilities
+    """
+
+    eval_dir_path: Path
     task: str
-    split_name: str                 # e.g. "golden_test", "val", "test"
 
     metrics_path: Path
-    model_path: Path
 
-    num_eval_tiles: int
-    group_col: str                  # e.g. "region", "scene_id"
-    selection_source: Optional[Path]  # txt/json file used to define evaluation subset
+    eval_cfg: Dict[str, Any]
 
-    metrics: Dict[str, Any]         # canonical summary metrics for quick access
-    upstream: Dict[str, Any]        # train_manifest, split_json, tiles_manifest, train_cfg, etc.
-    meta: Dict[str, Any]
+    metrics: Dict[str, float]
+    artifacts: Dict[str, Any]
