@@ -1,61 +1,52 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
+from geo_mlops.core.contracts.train_contract import (
+    TrainContract,
+)
+TRAIN_MANIFEST_NAME = "train_manifest.json"
+METRICS_MANIFEST_NAME = "metrics.json"
 
-import numpy as np
-import pandas as pd
-import yaml
-from geo_mlops.core.contracts.train_contract import TrainInputs
+
+def write_train_contract(
+    contract: TrainContract, 
+    manifest_name: str = TRAIN_MANIFEST_NAME
+) -> Path:
+    """
+    Write train_manifest.json for a completed training stage.
+    """
+    contract.train_dir_path.mkdir(parents=True, exist_ok=True)
+    manifest_path = contract.train_dir_path / manifest_name
+
+    payload = _as_plain_dict(_to_jsonable(contract))
+
+    manifest_path.write_text(json.dumps(payload, indent=2))
+    return manifest_path
 
 
-def resolve_training_inputs(
-    *,
-    tiles_manifest_path: Path,
-    split_json_path: Path,
-    train_cfg_path: Path,
-    out_dir: Path,
-) -> TrainInputs:
-    tiles_manifest_path = Path(tiles_manifest_path)
-    split_json_path = Path(split_json_path)
-    train_cfg_path = Path(train_cfg_path)
-    out_dir = Path(out_dir)
+def load_train_contract(manifest_path: Path) -> TrainContract:
+    """
+    Load a TrainContract from either:
+      - the training output directory, or
+      - the train_manifest.json path directly.
+    """
 
-    tiles = json.loads(tiles_manifest_path.read_text())
-    split = json.loads(split_json_path.read_text())
-    train_cfg = yaml.safe_load(train_cfg_path.read_text()) or {}
+    data = _load_json(manifest_path)
 
-    master_csv = Path(tiles["master_csv"])
-    task = str(tiles["task"])
-
-    df = pd.read_csv(master_csv)
-
-    # Your split.json is subregion-based (train_regions/val_regions)
-    train_regions: List[str] = list(split.get("train_regions", []))
-    val_regions: List[str] = list(split.get("val_regions", []))
-
-    if not train_regions or not val_regions:
-        raise ValueError("split.json must include non-empty train_regions and val_regions")
-
-    if "subregion" not in df.columns:
-        raise ValueError("tiles_master.csv must contain 'subregion' column for region-based split")
-
-    train_idx = df.index[df["region"].isin(train_regions)].to_numpy(dtype=np.int64)
-    val_idx = df.index[df["region"].isin(val_regions)].to_numpy(dtype=np.int64)
-
-    if len(train_idx) == 0 or len(val_idx) == 0:
-        raise ValueError(f"Empty split after filtering: train={len(train_idx)} val={len(val_idx)}")
-
-    return TrainInputs(
-        task=task,
-        tiles_manifest_path=tiles_manifest_path,
-        split_json_path=split_json_path,
-        train_cfg_path=train_cfg_path,
-        out_dir=out_dir,
-        tiles_master_csv=master_csv,
-        train_row_indices=train_idx,
-        val_row_indices=val_idx,
-        train_cfg=train_cfg,
+    return TrainContract(
+        train_dir_path=Path(data["train_dir_path"]),
+        task=data["task"],
+        # tiles_manifest_path=Path(data["tiles_manifest_path"]),
+        # split_manifest_path=Path(data["split_manifest_path"]),
+        # task_cfg_path=Path(data["task_cfg_path"]),
+        model_path=Path(data["model_path"]),
+        metrics_path=Path(data["metrics_path"]),
+        num_train_tiles=int(data["num_train_tiles"]),
+        num_val_tiles=int(data["num_val_tiles"]),
+        train_cfg=dict(data["train_cfg"]),
+        best_metric_value=data.get("best_metric_value"),
+        best_epoch=data.get("best_epoch"),
+        tracking=dict(data.get("tracking", {})),
     )
