@@ -138,6 +138,17 @@ class BuildingSegmentationEvalAccumulator:
 
         self.rows.append(row)
         return row
+    
+    def ingest_rows(self, rows: list[dict[str, Any]]) -> None:
+        for row in rows:
+            counts = {
+                "tp": int(row.get("tp", 0)),
+                "fp": int(row.get("fp", 0)),
+                "fn": int(row.get("fn", 0)),
+                "tn": int(row.get("tn", 0)),
+            }
+            self.global_counts = _add_counts(self.global_counts, counts)
+            self.rows.append(dict(row))
 
     def finalize(self, *, out_dir: Path) -> Dict[str, Any]:
         out_dir = Path(out_dir)

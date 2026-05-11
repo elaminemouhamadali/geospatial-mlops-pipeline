@@ -25,30 +25,22 @@ from geo_mlops.core.utils.windows import(
 from geo_mlops.core.utils.dataclasses import _as_plain_dict
 
 
-def run_full_scene_inference(
+def process_inference_scenes(
     *,
-    task: str,
     model: torch.nn.Module,
     device: torch.device,
     scenes: Iterable[DiscoveredScene],
     inference_out_dir: Path,
     inference_cfg: InferenceConfig,
-    load_scene_fn: Callable[[DiscoveredScene], SceneArrays],
-    forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
-    postprocess_fn: Callable[[Any, Dict[str, Any]], InferencePrediction],
-    save_prediction_fn: Callable[
-        [DiscoveredScene, SceneArrays, InferencePrediction, Path, InferenceConfig],
-        Any,
-    ],
-    checkpoint_path: Optional[Path] = None,
-) -> Tuple[Path, InferenceContract]:
+    load_scene_fn,
+    forward_fn,
+    postprocess_fn,
+    save_prediction_fn,
+) -> tuple[list[dict[str, Any]], list[DiscoveredScene]]:
     _seed_everything(inference_cfg.seed)
 
     inference_out_dir = Path(inference_out_dir)
     inference_out_dir.mkdir(parents=True, exist_ok=True)
-
-    tables_dir = inference_out_dir / "tables"
-    tables_dir.mkdir(parents=True, exist_ok=True)
 
     scene_list = list(scenes)
     if not scene_list:
@@ -93,6 +85,46 @@ def run_full_scene_inference(
                     "logits_path": (str(artifacts.logits_path)),
                 }
             )
+
+    return prediction_rows, scene_list
+
+
+
+def run_full_scene_inference(
+    *,
+    task: str,
+    model: torch.nn.Module,
+    device: torch.device,
+    scenes: Iterable[DiscoveredScene],
+    inference_out_dir: Path,
+    inference_cfg: InferenceConfig,
+    load_scene_fn: Callable[[DiscoveredScene], SceneArrays],
+    forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
+    postprocess_fn: Callable[[Any, Dict[str, Any]], InferencePrediction],
+    save_prediction_fn: Callable[
+        [DiscoveredScene, SceneArrays, InferencePrediction, Path, InferenceConfig],
+        Any,
+    ],
+    checkpoint_path: Optional[Path] = None,
+) -> Tuple[Path, InferenceContract]:
+
+    inference_out_dir = Path(inference_out_dir)
+    inference_out_dir.mkdir(parents=True, exist_ok=True)
+    
+    tables_dir = inference_out_dir / "tables"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+
+    prediction_rows, scene_list = process_inference_scenes(
+        model=model,
+        device=device,
+        scenes=scenes,
+        inference_out_dir=inference_out_dir,
+        inference_cfg=inference_cfg,
+        load_scene_fn=load_scene_fn,
+        forward_fn=forward_fn,
+        postprocess_fn=postprocess_fn,
+        save_prediction_fn=save_prediction_fn,
+    )
 
     prediction_table_path = tables_dir / "prediction_inventory.csv"
     pd.DataFrame(prediction_rows).to_csv(prediction_table_path, index=False)

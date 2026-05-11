@@ -96,14 +96,14 @@ def train_one_run(
 
     callback_list = CallbackList(callbacks)
 
-    engine_cfg = _as_plain_dict(engine_cfg)
+    engine_cfg_dict = _as_plain_dict(engine_cfg)
 
     callback_list.on_train_start(
         model=model,
         train_dir_path=train_dir_path,
         device=device,
         train_cfg=train_cfg,
-        engine_cfg=engine_cfg,
+        engine_cfg=engine_cfg_dict,
     )
 
     for epoch in range(1, engine_cfg.epochs + 1):

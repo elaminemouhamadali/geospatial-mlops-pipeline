@@ -242,7 +242,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "--device", args.device,
         ]
 
-        _run_stage("evaluate_golden", inference.main, eval_argv)
+        _run_stage("inference_golden", inference.main, inference_argv)
     else:
         print("[run_pipeline] SKIP evaluation")
 

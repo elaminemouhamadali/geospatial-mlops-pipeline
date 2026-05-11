@@ -35,12 +35,12 @@ splitting:
       train: 0.5
       val: 0.5
 
-    group_col: region
+    group_col: roi
     predefined_col: split
     
   outputs:
     prefix: tiles
-    group_list_prefix: regions
+    group_list_prefix: rois
 
 training:
   engine:
@@ -131,7 +131,11 @@ gating:
         metric: f1
         comparator: ">="
         threshold: 0.30
-      - scope: macro
+      - scope: scene_macro
+        metric: f1
+        comparator: ">="
+        threshold: 0.24
+      - scope: roi_macro
         metric: f1
         comparator: ">="
         threshold: 0.24

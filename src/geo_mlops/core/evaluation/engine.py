@@ -18,7 +18,7 @@ def run_prediction_evaluation(
     out_dir: Path,
     evaluate_prediction_row_fn,
     metric_accumulator,
-    eval_cfg_raw: EvalConfig =None,
+    eval_cfg_raw: EvalConfig | None = None,
 ):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -36,8 +36,16 @@ def run_prediction_evaluation(
         row = evaluate_prediction_row_fn(record)
         per_scene_rows.append(row)
 
+    # Generic core table.
+    per_scene_table_path = tables_dir / "per_scene_metrics.csv"
+    pd.DataFrame(per_scene_rows).to_csv(per_scene_table_path, index=False)
+
+    # Task-specific accumulator outputs.
     task_summary = metric_accumulator.finalize(out_dir=out_dir)
-    metrics = _as_plain_dict(task_summary.get("metrics"))
+
+    metrics = _as_plain_dict(task_summary.get("metrics", {}))
+    artifacts = _as_plain_dict(task_summary.get("artifacts", {}))
+    analytics = _as_plain_dict(task_summary.get("analytics", {}))
 
     metrics_path = out_dir / "metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2))
@@ -49,8 +57,11 @@ def run_prediction_evaluation(
         eval_cfg=_as_plain_dict(eval_cfg_raw),
         metrics=metrics,
         artifacts={
-            **task_summary.get("artifacts", {}),
+            "prediction_table_csv": str(prediction_table_path),
+            "per_scene_metrics_csv": str(per_scene_table_path),
+            **artifacts,
         },
+        analytics=analytics,
     )
 
     manifest_path = write_eval_contract(contract)

@@ -17,7 +17,7 @@ services:
       - ../..:/workspace
       - ../../outputs:/outputs
       - ../../mlruns:/mlruns
-      - /mnt/d/SpaceNet:/datasets/SpaceNet
+      - /mnt/d/SpaceNet:/mnt/d/SpaceNet
     command: >
       bash -lc "ray start --head --node-ip-address=ray-head --port=6379 --dashboard-host=0.0.0.0 --dashboard-port=8265 --num-cpus=2 --disable-usage-stats --block"
 
@@ -36,7 +36,7 @@ services:
       - ../..:/workspace
       - ../../outputs:/outputs
       - ../../mlruns:/mlruns
-      - /mnt/d/SpaceNet:/datasets/SpaceNet
+      - /mnt/d/SpaceNet:/mnt/d/SpaceNet
     command: >
       bash -lc "sleep 10 && ray start --address=ray-head:6379 --num-cpus=2 --disable-usage-stats --block"
 
@@ -55,6 +55,6 @@ services:
       - ../..:/workspace
       - ../../outputs:/outputs
       - ../../mlruns:/mlruns
-      - /mnt/d/SpaceNet:/datasets/SpaceNet
+      - /mnt/d/SpaceNet:/mnt/d/SpaceNet
     command: >
       bash -lc "sleep 10 && ray start --address=ray-head:6379 --num-cpus=2 --disable-usage-stats --block"
