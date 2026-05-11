@@ -1,0 +1,75 @@
+apiVersion: ray.io/v1
+kind: RayCluster
+metadata:
+  name: geo-mlops-ray-gpu
+  namespace: default
+spec:
+  rayVersion: "2.9.0"
+
+  headGroupSpec:
+    rayStartParams:
+      dashboard-host: "0.0.0.0"
+      num-cpus: "0"
+
+    template:
+      spec:
+        containers:
+          - name: ray-head
+            image: geo-mlops:ray-gpu
+            imagePullPolicy: IfNotPresent
+            ports:
+              - containerPort: 6379
+                name: gcs-server
+              - containerPort: 8265
+                name: dashboard
+              - containerPort: 10001
+                name: client
+            resources:
+              requests:
+                cpu: "4"
+                memory: "16Gi"
+                nvidia.com/gpu: "1"
+              limits:
+                cpu: "4"
+                memory: "16Gi"
+                nvidia.com/gpu: "1"
+            volumeMounts:
+              - name: datasets
+                mountPath: /datasets
+        volumes:
+          - name: datasets
+            hostPath:
+              path: /mnt/d/SpaceNet
+              type: Directory
+
+  workerGroupSpecs:
+    - groupName: cpu-workers
+      replicas: 2
+      minReplicas: 2
+      maxReplicas: 4
+
+      rayStartParams: {}
+
+      template:
+        spec:
+          containers:
+            - name: ray-worker
+              image: geo-mlops:ray-cpu
+              imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: "4"
+                  memory: "16Gi"
+                  nvidia.com/gpu: "1"
+                limits:
+                  cpu: "4"
+                  memory: "16Gi"
+                  nvidia.com/gpu: "1"
+              volumeMounts:
+                - name: datasets
+                  mountPath: /datasets
+          volumes:
+            - name: datasets
+              hostPath:
+                path: /mnt/d/SpaceNet
+                type: Directory
