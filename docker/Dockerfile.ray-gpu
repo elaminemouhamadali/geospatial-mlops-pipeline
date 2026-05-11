@@ -1,0 +1,12 @@
+ARG BASE_IMAGE=geo-mlops:gpu
+FROM ${BASE_IMAGE}
+
+WORKDIR /workspace
+
+RUN python -m pip install \
+    --retries 10 \
+    --timeout 120 \
+    --progress-bar off \
+    -e ".[ray]"
+
+CMD ["bash"]
