@@ -5,14 +5,21 @@ import math
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
+from geo_mlops.core.utils.dataclasses import _as_plain_dict
 
 import pandas as pd
 import ray
 import torch
+from geo_mlops.core.utils.cuda import _resolve_device
 
 from geo_mlops.core.config.loader import load_cfg
 from geo_mlops.core.evaluation.engine import EvalOutputs, EvalScene, run_full_scene_evaluation
-from geo_mlops.core.execution.ray_backend import RayBackendConfig, init_ray_backend
+from geo_mlops.core.execution.ray_backend import (
+    RayBackendConfig,
+    get_ray_default_num_shards,
+    init_ray_backend,
+)
+from geo_mlops.core.execution.sharding import shard_sequence
 from geo_mlops.core.registry.task_registry import get_task
 
 
@@ -96,10 +103,13 @@ def run_ray_full_scene_evaluation(
     if not scenes:
         raise ValueError("No evaluation scenes were discovered.")
 
-    shards = _build_scene_shards(
-        scenes=scenes,
+    default_num_shards = get_ray_default_num_shards(resource="CPU")
+
+    shards = shard_sequence(
+        scenes,
         num_shards=num_shards,
-        scenes_per_shard=scenes_per_shard,
+        items_per_shard=scenes_per_shard,
+        default_num_shards=default_num_shards,
     )
 
     shard_root = out_dir / "shards"
@@ -402,36 +412,7 @@ def _metrics_from_counts(
     }
 
 
-def _build_scene_shards(
-    *,
-    scenes: Sequence[EvalScene],
-    num_shards: Optional[int],
-    scenes_per_shard: Optional[int],
-) -> List[List[EvalScene]]:
-    if scenes_per_shard is not None:
-        if scenes_per_shard <= 0:
-            raise ValueError("scenes_per_shard must be > 0.")
 
-        return [
-            list(scenes[i : i + scenes_per_shard])
-            for i in range(0, len(scenes), scenes_per_shard)
-        ]
-
-    if num_shards is None:
-        resources = ray.cluster_resources()
-        available_cpus = int(resources.get("CPU", 1))
-        num_shards = max(1, min(len(scenes), available_cpus))
-
-    if num_shards <= 0:
-        raise ValueError("num_shards must be > 0.")
-
-    num_shards = min(num_shards, len(scenes))
-    shard_size = int(math.ceil(len(scenes) / num_shards))
-
-    return [
-        list(scenes[i : i + shard_size])
-        for i in range(0, len(scenes), shard_size)
-    ]
 
 
 def _scene_to_payload(scene: EvalScene) -> Dict[str, Any]:
@@ -456,14 +437,6 @@ def _scene_from_payload(payload: Mapping[str, Any]) -> EvalScene:
         subregion=str(payload["subregion"]) if payload.get("subregion") is not None else None,
         meta=dict(payload.get("meta") or {}),
     )
-
-
-def _resolve_device(device_arg: str) -> torch.device:
-    if device_arg == "cuda" and not torch.cuda.is_available():
-        print("[ray-evaluate] CUDA requested but unavailable; falling back to CPU.")
-        return torch.device("cpu")
-
-    return torch.device(device_arg)
 
 
 def _load_training_cfg_from_task_cfg(task_cfg_path: Path) -> Dict[str, Any]:
@@ -493,16 +466,3 @@ def _apply_eval_overrides(eval_engine_cfg: Any, overrides: Optional[Mapping[str,
     from dataclasses import replace
 
     return replace(eval_engine_cfg, **updates)
-
-
-def _as_plain_dict(obj: Any) -> Dict[str, Any]:
-    if obj is None:
-        return {}
-
-    if is_dataclass(obj):
-        return asdict(obj)
-
-    if isinstance(obj, dict):
-        return dict(obj)
-
-    return {"value": str(obj)}
