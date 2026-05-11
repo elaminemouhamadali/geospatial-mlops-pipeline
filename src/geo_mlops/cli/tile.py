@@ -3,8 +3,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from typing import Optional, Sequence
-
-from geo_mlops.core.contracts.tile_contract import TILES_MANIFEST_NAME
 from geo_mlops.core.registry.task_registry import get_task
 from geo_mlops.core.tiling.stage import run_tiling_stage
 
@@ -16,7 +14,6 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
             "and task-specific adapter/policy components."
         )
     )
-
     ap.add_argument(
         "--task",
         type=str,
@@ -24,48 +21,26 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="Task key registered in task_registry, e.g. building_seg.",
     )
     ap.add_argument(
-        "--task-cfg",
-        "--task_cfg",
-        dest="task_cfg",
+        "--task-cfg-path",
+        "--task_cfg_path",
+        dest="task_cfg_path",
         type=Path,
         required=True,
         help="Unified task config YAML/JSON.",
     )
     ap.add_argument(
-        "--dataset-root",
-        "--dataset_root",
-        dest="dataset_root",
+        "--dataset-root-path",
+        "--dataset_root_path",
+        dest="dataset_root_path",
         type=Path,
         required=True,
         help="Directory containing dataset bucket subdirectories.",
     )
     ap.add_argument(
-        "--dataset-buckets",
-        nargs="+",
-        default=None,
-        help="One or more dataset bucket names under --dataset-root.",
-    )
-    ap.add_argument(
-        "--regions",
-        type=str,
-        nargs="*",
-        default=None,
-        help="Optional region directory names to process under each bucket.",
-    )
-    ap.add_argument(
-        "--csv-name",
-        "--csv_name",
-        dest="csv_name",
-        type=str,
-        required=True,
-        help="Per-subdir CSV filename to write or reuse.",
-    )
-    ap.add_argument(
-        "--out-dir",
-        "--out_dir",
-        dest="out_dir",
+        "--tiles-dir-path",
+        "--tiles_dir_path",
         type=Path,
-        required=True,
+        default=None,
         help="Output directory for master CSV and tiles manifest.",
     )
     ap.add_argument(
@@ -87,30 +62,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     task_plugin = get_task(args.task)
 
-    engine_cfg, adapter, policy, meta = task_plugin.build_tiling_components(
-        task_cfg_path=args.task_cfg,
+    tile_engine_cfg, adapter, policy, _ = task_plugin.build_tiling_components(
+        task_cfg_path=args.task_cfg_path,
     )
 
-    contract = run_tiling_stage(
+    manifest_path, contract = run_tiling_stage(
         task=args.task,
-        task_cfg_path=args.task_cfg,
-        dataset_root=args.dataset_root,
-        dataset_buckets=args.dataset_buckets,
-        regions=args.regions,
-        csv_name=args.csv_name,
-        out_dir=args.out_dir,
-        engine_cfg=engine_cfg,
+        dataset_root_path=args.dataset_root_path,
+        tiles_dir_path=args.tiles_dir_path,
+        tile_engine_cfg=tile_engine_cfg,
         adapter=adapter,
         policy=policy,
-        meta=meta or {},
         force=args.force,
         verbose=args.verbose,
     )
 
-    manifest_path = contract.tiles_dir / TILES_MANIFEST_NAME
-
     print(f"[tiling] wrote {contract.row_count} rows")
-    print(f"[master] {contract.master_csv}")
+    print(f"[master] {contract.master_csv_path}")
     print(f"[manifest] {manifest_path}")
     print("Done.")
 

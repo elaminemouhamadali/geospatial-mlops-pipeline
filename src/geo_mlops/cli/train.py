@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace
 from pathlib import Path
 from typing import Optional, Sequence
 from datetime import datetime
 
-import torch
-
+from geo_mlops.core.utils.cuda import _resolve_device
 from geo_mlops.core.io.split_io import load_split_contract
 from geo_mlops.core.io.tile_io import load_tiles_contract
-from geo_mlops.core.io.train_io import resolve_training_inputs
 from geo_mlops.core.registry.task_registry import get_task
-from geo_mlops.core.training.engine import TrainConfig, train_one_run
+from geo_mlops.core.training.engine import train_one_run
 from geo_mlops.core.training.mlflow_callbacks import MLflowTrainingCallback
 
 
@@ -28,33 +25,33 @@ def build_argparser() -> argparse.ArgumentParser:
         help="Task key registered in task_registry, e.g. building_seg.",
     )
     ap.add_argument(
-        "--task-cfg",
-        "--task_cfg",
-        dest="task_cfg",
+        "--task-cfg-path",
+        "--task_cfg_path",
+        dest="task_cfg_path",
         type=Path,
         required=True,
         help="Unified task config YAML/JSON containing a `training:` section.",
     )
     ap.add_argument(
-        "--tiles-dir",
-        "--tiles_dir",
-        dest="tiles_dir",
+        "--tiles-manifest-path",
+        "--tiles_manifest_path",
+        dest="tiles_manifest_path",
         type=Path,
         required=True,
-        help="Tiling output directory containing tiles_manifest.json.",
+        help="Tiling output manifest tiles_manifest.json.",
     )
     ap.add_argument(
-        "--split-dir",
-        "--split_dir",
-        dest="split_dir",
+        "--split-manifest-path",
+        "--split_manifest_path",
+        dest="split_manifest_path",
         type=Path,
         required=True,
-        help="Split output directory containing split.json.",
+        help="Split manifest split.json.",
     )
     ap.add_argument(
-        "--out-dir",
-        "--out_dir",
-        dest="out_dir",
+        "--train-dir-path",
+        "--train_dir_path",
+        dest="train_dir_path",
         type=Path,
         required=True,
         help="Output directory for training artifacts.",
@@ -62,62 +59,12 @@ def build_argparser() -> argparse.ArgumentParser:
 
     # Optional runtime overrides. If omitted, values come from training.engine.
     ap.add_argument("--device", type=str, default="cuda")
-    ap.add_argument("--batch-size", type=int, default=None)
-    ap.add_argument("--num-workers", type=int, default=None)
-    ap.add_argument("--epochs", type=int, default=None)
-    ap.add_argument("--lr", type=float, default=None)
-    ap.add_argument("--seed", type=int, default=None)
-    ap.add_argument("--selection-metric", type=str, default=None)
-    ap.add_argument("--selection-mode", type=str, choices=("min", "max"), default=None)
-
+    
     ap.add_argument("--mlflow", action="store_true", help="Enable MLflow logging.")
     ap.add_argument("--mlflow-tracking-uri", type=str, default=None)
     ap.add_argument("--mlflow-experiment", type=str, default=None)
-    ap.add_argument("--mlflow-run-name", type=str, default=None)
 
     return ap
-
-
-def _build_train_config(train_cfg: dict) -> TrainConfig:
-    engine_cfg = train_cfg.get("engine", {}) or {}
-
-    return TrainConfig(
-        batch_size=int(engine_cfg.get("batch_size", 8)),
-        num_workers=int(engine_cfg.get("num_workers", 4)),
-        epochs=int(engine_cfg.get("epochs", 5)),
-        lr=float(engine_cfg.get("lr", 3e-4)),
-        seed=int(engine_cfg.get("seed", 1337)),
-        selection_metric=str(engine_cfg.get("selection_metric", "val/loss")),
-        selection_mode=str(engine_cfg.get("selection_mode", "min")),
-    )
-
-
-def _apply_cli_overrides(cfg: TrainConfig, args: argparse.Namespace) -> TrainConfig:
-    updates = {}
-
-    if args.batch_size is not None:
-        updates["batch_size"] = int(args.batch_size)
-    if args.num_workers is not None:
-        updates["num_workers"] = int(args.num_workers)
-    if args.epochs is not None:
-        updates["epochs"] = int(args.epochs)
-    if args.lr is not None:
-        updates["lr"] = float(args.lr)
-    if args.seed is not None:
-        updates["seed"] = int(args.seed)
-    if args.selection_metric is not None:
-        updates["selection_metric"] = str(args.selection_metric)
-    if args.selection_mode is not None:
-        updates["selection_mode"] = str(args.selection_mode)
-
-    return replace(cfg, **updates) if updates else cfg
-
-
-def _resolve_device(device_arg: str) -> torch.device:
-    if device_arg == "cuda" and not torch.cuda.is_available():
-        print("[train] CUDA requested but unavailable; falling back to CPU.")
-        return torch.device("cpu")
-    return torch.device(device_arg)
 
 
 def default_run_name(
@@ -135,46 +82,33 @@ def default_run_name(
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_argparser().parse_args(argv)
-    args.out_dir.mkdir(parents=True, exist_ok=True)
+    args.train_dir_path.mkdir(parents=True, exist_ok=True)
 
     task_plugin = get_task(args.task)
 
     # -------------------------------------------------------------------------
     # Load stage contracts
     # -------------------------------------------------------------------------
-    tiles = load_tiles_contract(args.tiles_dir)
-    split = load_split_contract(args.split_dir)
+    tiles_contract = load_tiles_contract(args.tiles_manifest_path)
+    split_contract = load_split_contract(args.split_manifest_path)
 
-    if tiles.task != args.task:
+    if tiles_contract.task != args.task:
         raise ValueError(
-            f"Task mismatch: --task={args.task!r}, tiles.task={tiles.task!r}"
+            f"Task mismatch: --task={args.task!r}, tiles.task={tiles_contract.task!r}"
         )
 
     # -------------------------------------------------------------------------
     # Load task training config
     # -------------------------------------------------------------------------
-    train_cfg = task_plugin.build_training_cfg(args.task_cfg)
-    engine_cfg = _apply_cli_overrides(
-        _build_train_config(train_cfg),
-        args,
-    )
-
-    # -------------------------------------------------------------------------
-    # Resolve canonical training inputs
-    # -------------------------------------------------------------------------
-    train_inputs = resolve_training_inputs(
-        tiles_manifest_path=tiles.tiles_dir / "tiles_manifest.json",
-        split_json_path=split.split_dir / "split.json",
-        train_cfg_path=args.task_cfg,
-        out_dir=args.out_dir,
-    )
+    train_cfg = task_plugin.build_training_cfg(args.task_cfg_path)
+    train_engine_cfg = task_plugin.build_train_engine_cfg(train_cfg)
 
     # -------------------------------------------------------------------------
     # Build task-specific components through plugin
     # -------------------------------------------------------------------------
     train_ds, val_ds = task_plugin.build_train_val_datasets(
-        tiles=tiles,
-        split=split,
+        tiles=tiles_contract,
+        split=split_contract,
         train_cfg=train_cfg,
     )
 
@@ -188,10 +122,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     callbacks = []
 
     if args.mlflow:
-        run_name = args.mlflow_run_name or default_run_name(
+        run_name = default_run_name(
             task=args.task,
             stage="train",
-            cfg_name=args.task_cfg.stem,
+            cfg_name=args.task_cfg_path.stem,
         )
         callbacks.append(
             MLflowTrainingCallback(
@@ -201,39 +135,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 tags={
                     "task": args.task,
                     "stage": "train",
-                    "task_cfg": str(args.task_cfg),
-                    "tiles_dir": str(args.tiles_dir),
-                    "split_dir": str(args.split_dir),
+                    "task_cfg": str(args.task_cfg_path),
+                    "tiles_manifest_path": str(args.tiles_manifest_path),
+                    "split_manifest_path": str(args.split_manifest_path),
                 }
             )
         )
     # -------------------------------------------------------------------------
     # Run generic core trainer
     # -------------------------------------------------------------------------
-    run_outputs = train_one_run(
+    manifest_path, contract = train_one_run(
         model=model,
         loss_fn=loss_fn,
         train_ds=train_ds,
         val_ds=val_ds,
-        out_dir=args.out_dir,
+        train_dir_path=args.train_dir_path,
         device=device,
-        cfg=engine_cfg,
-        train_inputs=train_inputs,
+        engine_cfg=train_engine_cfg,
         forward_fn=forward_fn,
         metrics_fn=metrics_fn,
         callbacks=callbacks,
-        callback_context={
-            "train_cfg": train_cfg,
-            "task_cfg_path": str(args.task_cfg),
-            "tiles_dir": str(args.tiles_dir),
-            "split_dir": str(args.split_dir),
-        },
+        task=args.task,
+        train_cfg=train_cfg,
     )
 
     print(f"[train] done")
-    print(f"[train] model={run_outputs.model_path}")
-    print(f"[train] metrics={run_outputs.metrics_path}")
-    print(f"[train] manifest={run_outputs.train_manifest_path}")
+    print(f"[train] model={contract.model_path}")
+    print(f"[train] metrics={contract.metrics_path}")
+    print(f"[train] manifest={manifest_path}")
 
     return 0
 

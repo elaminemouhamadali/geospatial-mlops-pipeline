@@ -1,24 +1,9 @@
-"""
-Task-agnostic MLOps CLI: create train/val(/test) splits from a tiling stage output directory.
-
-Input:
-- A unified task config containing a `splitting:` section
-- A tiling output directory containing:
-    - tiles_manifest.json
-    - master tiles CSV referenced by the manifest
-
-Outputs:
-- split.json       canonical SplitContract
-- group_stats.csv  optional debugging artifact
-- train_<prefix>.txt / val_<prefix>.txt optional convenience artifacts
-"""
-
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 from typing import Optional, Sequence
-
+from geo_mlops.core.registry.task_registry import get_task
 from geo_mlops.core.splitting.stage import run_split_stage
 
 
@@ -26,7 +11,6 @@ def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Create deterministic group-aware train/val(/test) splits from a tiling output directory."
     )
-
     p.add_argument(
         "--task",
         type=str,
@@ -34,38 +18,28 @@ def build_argparser() -> argparse.ArgumentParser:
         help="Task name, e.g. building_seg.",
     )
     p.add_argument(
-        "--task-cfg",
-        "--task_cfg",
-        dest="task_cfg",
+        "--task-cfg-path",
+        "--task_cfg_path",
+        dest="task_cfg_path",
         type=Path,
         required=True,
         help="Unified task config YAML/JSON containing a `splitting:` section.",
     )
     p.add_argument(
-        "--tiles-dir",
-        "--tiles_dir",
-        dest="tiles_dir",
+        "--tiles-manifest-path",
+        "--tiles_manifest_path",
+        dest="tiles_manifest_path",
         type=Path,
         required=True,
         help="Tiling output directory containing tiles_manifest.json.",
     )
     p.add_argument(
-        "--out-dir",
-        "--out_dir",
-        dest="out_dir",
+        "--split-dir-path",
+        "--split_dir_path",
+        dest="split_dir_path",
         type=Path,
         required=True,
         help="Output directory for split artifacts.",
-    )
-    p.add_argument(
-        "--no-group-lists",
-        action="store_true",
-        help="Do not write train_*.txt / val_*.txt.",
-    )
-    p.add_argument(
-        "--no-group-stats",
-        action="store_true",
-        help="Do not write group_stats.csv.",
     )
 
     return p
@@ -74,16 +48,25 @@ def build_argparser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_argparser().parse_args(argv)
 
-    contract = run_split_stage(
-        task=args.task,
-        task_cfg_path=args.task_cfg,
-        tiles_dir=args.tiles_dir,
-        out_dir=args.out_dir,
-        write_group_lists=not args.no_group_lists,
-        write_group_stats=not args.no_group_stats,
+    task_plugin = get_task(args.task)
+
+    splitting_cfg = task_plugin.build_splitting_cfg(
+        task_cfg_path=args.task_cfg_path
     )
 
-    print(f"[split] wrote split contract -> {contract.split_dir / 'split.json'}")
+    split_engine_cfg, group_list_prefix = task_plugin.build_split_engine_cfg(
+        splitting_cfg
+    )
+
+    manifest_path, contract = run_split_stage(
+        task=args.task,
+        split_engine_cfg=split_engine_cfg,
+        group_list_prefix=group_list_prefix,
+        tiles_manifest_path=args.tiles_manifest_path,
+        split_dir_path=args.split_dir_path,
+    )
+
+    print(f"[split] wrote split contract -> {manifest_path}")
     print(f"[split] train groups: {len(contract.train_regions)}")
     print(f"[split] val groups: {len(contract.val_regions)}")
 
