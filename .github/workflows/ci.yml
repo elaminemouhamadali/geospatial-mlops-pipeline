@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Python tests and lint
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libgdal-dev \
+            libproj-dev \
+            proj-bin \
+            proj-data
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install package with dev dependencies
+        run: |
+          python -m pip install -e ".[dev]"
+
+      - name: Show environment
+        run: |
+          python --version
+          python -m pip list
+          python -c "import geo_mlops; print('geo_mlops import OK')"
+
+      - name: Ruff lint
+        run: |
+          ruff check src tests
+
+      - name: Pytest
+        run: |
+          pytest -q
