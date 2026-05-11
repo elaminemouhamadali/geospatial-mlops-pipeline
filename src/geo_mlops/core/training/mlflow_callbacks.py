@@ -37,7 +37,15 @@ class MLflowTrainingCallback(TrainingCallback):
         self.run_name: Optional[str] = run_name
         self.experiment_id: Optional[str] = None
 
-    def on_train_start(self, context: Dict[str, Any]) -> None:
+    def on_train_start(
+        self,
+        *,
+        model: torch.nn.Module,
+        train_dir_path: Path,
+        device: torch.device,
+        train_cfg: Dict[str, Any],
+        engine_cfg: Dict[str, Any],
+    ) -> None:
         if self.tracking_uri:
             mlflow.set_tracking_uri(self.tracking_uri)
 
@@ -55,9 +63,6 @@ class MLflowTrainingCallback(TrainingCallback):
 
         mlflow.set_tags(self.tags)
 
-        train_cfg = context.get("train_cfg", {}) or {}
-        engine_cfg = context.get("engine_cfg", {}) or {}
-
         mlflow.log_params(_flatten_dict(engine_cfg, prefix="engine"))
         mlflow.log_params(_flatten_dict(train_cfg.get("model", {}) or {}, prefix="model"))
         mlflow.log_params(_flatten_dict(train_cfg.get("dataset", {}) or {}, prefix="dataset"))
@@ -67,41 +72,36 @@ class MLflowTrainingCallback(TrainingCallback):
 
     def on_epoch_end(
         self,
+        *,
         epoch: int,
         metrics: Dict[str, float],
-        context: Dict[str, Any],
     ) -> None:
         mlflow.log_metrics(metrics, step=epoch)
 
     def on_checkpoint_saved(
         self,
+        *,
         checkpoint_path: Path,
-        context: Dict[str, Any],
+        model: torch.nn.Module,
+        epoch: int,
+        metric_name: str,
+        metric_value: float,
     ) -> None:
         if self.log_checkpoints:
             mlflow.log_artifact(str(checkpoint_path), artifact_path="checkpoints")
 
-    def on_train_end(self, outputs: Any, context: Dict[str, Any]) -> None:
+    def on_train_end(
+        self,
+        *,
+        model: torch.nn.Module,
+        model_path: Path,
+        metrics_path: Path,
+    ) -> None:
         try:
-            mlflow.log_artifact(str(outputs.metrics_path), artifact_path="training")
-            # Keep raw checkpoint as a normal artifact for debugging/repro.
-            if getattr(outputs, "model_path", None):
-                mlflow.log_artifact(str(outputs.model_path), artifact_path="checkpoints")
+            mlflow.log_artifact(str(metrics_path), artifact_path="training")
+            mlflow.log_artifact(str(model_path), artifact_path="checkpoints")
 
-            # Log a real MLflow Model artifact for Model Registry:
-            # runs:/<run_id>/<model_artifact_path>
             if self.log_model:
-                model = context.get("model")
-                if model is None:
-                    raise ValueError(
-                        "MLflowTrainingCallback expected context['model'] "
-                        "so it can log an MLflow model artifact."
-                    )
-                if not isinstance(model, torch.nn.Module):
-                    raise TypeError(
-                        f"context['model'] must be torch.nn.Module, got {type(model).__name__}"
-                    )
-
                 was_training = model.training
                 model.eval()
 

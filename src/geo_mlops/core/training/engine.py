@@ -3,14 +3,18 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import torch
 from torch.utils.data import DataLoader
 
-from geo_mlops.core.contracts.train_contract import TrainInputs, TrainOutputs
+from geo_mlops.core.contracts.train_contract import TrainContract
+from geo_mlops.core.io.train_io import write_train_contract
+from geo_mlops.core.utils.dataclasses import _as_plain_dict
 from geo_mlops.core.utils.random import _seed_everything
+from geo_mlops.core.utils.cuda import _infer_batch_size
 from geo_mlops.core.training.callbacks import CallbackList, TrainingCallback
+
 
 @dataclass(frozen=True)
 class TrainConfig:
@@ -43,75 +47,66 @@ def train_one_run(
     loss_fn: Callable[[Any, Dict[str, Any]], torch.Tensor],
     train_ds,
     val_ds,
-    out_dir: Path,
+    train_dir_path: Path,
     device: torch.device,
-    cfg: TrainConfig,
-    train_inputs: TrainInputs,
+    engine_cfg: TrainConfig,
     forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
+    task: str,
+    train_cfg: Dict[str, Any],
     metrics_fn: Optional[Callable[[Any, Dict[str, Any]], Dict[str, float]]] = None,
     optimizer_factory: Optional[Callable[[torch.nn.Module, TrainConfig], torch.optim.Optimizer]] = None,
     callbacks: Optional[list[TrainingCallback]] = None,
-    callback_context: Optional[Dict[str, Any]] = None,
-) -> TrainOutputs:
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+) -> Tuple[Path, TrainContract]:
+    train_dir_path = Path(train_dir_path)
+    train_dir_path.mkdir(parents=True, exist_ok=True)
 
-    _seed_everything(cfg.seed)
+    _seed_everything(engine_cfg.seed)
     model.to(device)
 
     train_loader = DataLoader(
         train_ds,
-        batch_size=cfg.batch_size,
+        batch_size=engine_cfg.batch_size,
         shuffle=True,
-        num_workers=cfg.num_workers,
+        num_workers=engine_cfg.num_workers,
         pin_memory=(device.type == "cuda"),
         drop_last=True,
     )
 
     val_loader = DataLoader(
         val_ds,
-        batch_size=cfg.batch_size,
+        batch_size=engine_cfg.batch_size,
         shuffle=False,
-        num_workers=cfg.num_workers,
+        num_workers=engine_cfg.num_workers,
         pin_memory=(device.type == "cuda"),
         drop_last=False,
     )
 
     opt = (
-        optimizer_factory(model, cfg)
+        optimizer_factory(model, engine_cfg)
         if optimizer_factory is not None
-        else torch.optim.AdamW(model.parameters(), lr=cfg.lr)
+        else torch.optim.AdamW(model.parameters(), lr=engine_cfg.lr)
     )
 
     best_metric_value: Optional[float] = None
     best_epoch: Optional[int] = None
     history: Dict[str, Any] = {}
 
-    model_path = out_dir / "model.pt"
+    model_path = train_dir_path / "model.pt"
+    metrics_path = train_dir_path / "metrics.json"
 
     callback_list = CallbackList(callbacks)
 
-    context: Dict[str, Any] = {
-        **(callback_context or {}),
-        "task": train_inputs.task,
-        "out_dir": out_dir,
-        "device": str(device),
-        "model": model,
-        "train_inputs": train_inputs,
-        "engine_cfg": {
-            "batch_size": cfg.batch_size,
-            "num_workers": cfg.num_workers,
-            "epochs": cfg.epochs,
-            "lr": cfg.lr,
-            "seed": cfg.seed,
-            "selection_metric": cfg.selection_metric,
-            "selection_mode": cfg.selection_mode,
-        },
-    }
+    engine_cfg = _as_plain_dict(engine_cfg)
 
-    callback_list.on_train_start(context)
+    callback_list.on_train_start(
+        model=model,
+        train_dir_path=train_dir_path,
+        device=device,
+        train_cfg=train_cfg,
+        engine_cfg=engine_cfg,
+    )
 
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(1, engine_cfg.epochs + 1):
         model.train()
 
         train_loss_sum = 0.0
@@ -149,7 +144,10 @@ def train_one_run(
                 if metrics_fn is not None:
                     batch_metrics = metrics_fn(outputs, batch)
                     for name, value in batch_metrics.items():
-                        val_metric_sums[name] = val_metric_sums.get(name, 0.0) + float(value) * batch_size
+                        val_metric_sums[name] = (
+                            val_metric_sums.get(name, 0.0)
+                            + float(value) * batch_size
+                        )
 
         val_loss = val_loss_sum / max(1, n_val)
         val_metrics = {
@@ -166,43 +164,40 @@ def train_one_run(
         callback_list.on_epoch_end(
             epoch=epoch,
             metrics=epoch_metrics,
-            context=context,
         )
 
         history[f"epoch_{epoch}"] = epoch_metrics
 
-        if cfg.selection_metric not in epoch_metrics:
+        if engine_cfg.selection_metric not in epoch_metrics:
             raise KeyError(
-                f"selection_metric={cfg.selection_metric!r} not found. "
+                f"selection_metric={engine_cfg.selection_metric!r} not found. "
                 f"Available metrics: {sorted(epoch_metrics.keys())}"
             )
 
-        current_value = float(epoch_metrics[cfg.selection_metric])
+        current_value = float(epoch_metrics[engine_cfg.selection_metric])
 
         print(
             f"[epoch {epoch}] "
             + " ".join(f"{k}={v:.4f}" for k, v in epoch_metrics.items())
         )
 
-        if _is_better(current_value, best_metric_value, cfg.selection_mode):
+        if _is_better(current_value, best_metric_value, engine_cfg.selection_mode):
             best_metric_value = current_value
             best_epoch = epoch
-            torch.save(model.state_dict(), model_path)
 
-            context["best_metric_value"] = best_metric_value
-            context["best_epoch"] = best_epoch
-            context["selection_metric"] = cfg.selection_metric
+            torch.save(model.state_dict(), model_path)
 
             callback_list.on_checkpoint_saved(
                 checkpoint_path=model_path,
-                context=context,
+                model=model,
+                epoch=epoch,
+                metric_name=engine_cfg.selection_metric,
+                metric_value=current_value,
             )
 
-    metrics_path = out_dir / "metrics.json"
-
     metrics_payload = {
-        "selection_metric": cfg.selection_metric,
-        "selection_mode": cfg.selection_mode,
+        "selection_metric": engine_cfg.selection_metric,
+        "selection_mode": engine_cfg.selection_mode,
         "best_metric_value": best_metric_value,
         "best_epoch": best_epoch,
         "history": history,
@@ -210,55 +205,25 @@ def train_one_run(
 
     metrics_path.write_text(json.dumps(metrics_payload, indent=2))
 
-    train_manifest_path = out_dir / "train_manifest.json"
-
-    outputs = TrainOutputs(
-        run_dir=out_dir,
+    callback_list.on_train_end(
+        model=model,
         model_path=model_path,
         metrics_path=metrics_path,
-        train_manifest_path=train_manifest_path,
     )
 
-    final_context = {
-        **context,
-        "metrics_path": metrics_path,
-        "train_manifest_path": train_manifest_path,
-        "model_path": model_path,
-        "best_metric_value": best_metric_value,
-        "best_epoch": best_epoch,
-    }
-
-    callback_list.on_train_end(
-        outputs=outputs,
-        context=final_context,
+    train_contract = TrainContract(
+        task=task,
+        train_dir_path=train_dir_path,
+        model_path=model_path,
+        metrics_path=metrics_path,
+        num_train_tiles=int(len(train_ds)),
+        num_val_tiles=int(len(val_ds)),
+        train_cfg=_as_plain_dict(train_cfg),
+        best_metric_value=best_metric_value,
+        best_epoch=best_epoch,
+        tracking=callback_list.state_dict(),
     )
 
-    callback_state = callback_list.state_dict()
+    manifest_path = write_train_contract(train_contract)
 
-    manifest = {
-        "task": train_inputs.task,
-        "tiles_manifest": str(train_inputs.tiles_manifest_path),
-        "split_json": str(train_inputs.split_json_path),
-        "train_cfg": str(train_inputs.train_cfg_path),
-        "tiles_master_csv": str(train_inputs.tiles_master_csv),
-        "num_train_tiles": int(len(train_inputs.train_row_indices)),
-        "num_val_tiles": int(len(train_inputs.val_row_indices)),
-        "model_path": str(model_path),
-        "metrics_path": str(metrics_path),
-        "selection_metric": cfg.selection_metric,
-        "selection_mode": cfg.selection_mode,
-        "best_metric_value": best_metric_value,
-        "best_epoch": best_epoch,
-        "tracking": callback_state,
-    }
-
-    train_manifest_path.write_text(json.dumps(manifest, indent=2))
-
-    return outputs
-
-
-def _infer_batch_size(batch: Dict[str, Any]) -> int:
-    for value in batch.values():
-        if torch.is_tensor(value):
-            return int(value.shape[0])
-    raise ValueError("Could not infer batch size from batch; no tensor values found.")
+    return manifest_path, train_contract
