@@ -1,0 +1,37 @@
+# docker/Dockerfile.gpu
+#
+# Build base first:
+#   docker build -f docker/Dockerfile.slim -t geo-mlops:slim .
+#
+# Build GPU:
+#   docker build -f docker/Dockerfile.gpu -t geo-mlops:gpu .
+
+ARG BASE_IMAGE=geo-mlops:slim
+FROM ${BASE_IMAGE}
+
+WORKDIR /workspace
+
+ARG PYTORCH_CUDA_INDEX=https://download.pytorch.org/whl/cu124
+
+RUN python -m pip uninstall -y torch torchvision torchaudio || true && \
+    python -m pip install \
+      --retries 10 \
+      --timeout 120 \
+      --progress-bar off \
+      --index-url ${PYTORCH_CUDA_INDEX} \
+      torch torchvision
+
+RUN python -m pip install \
+      --retries 10 \
+      --timeout 120 \
+      --progress-bar off \
+      -e ".[models]"
+
+RUN python - <<'PY'
+import torch
+print("torch:", torch.__version__)
+print("torch cuda build:", torch.version.cuda)
+print("cuda available during build:", torch.cuda.is_available())
+PY
+
+CMD ["bash"]
