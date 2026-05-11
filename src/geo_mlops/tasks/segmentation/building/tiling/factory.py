@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from geo_mlops.core.config.loader import load_cfg, require_section
 from geo_mlops.core.tiling.engine import TilingEngineConfig
@@ -12,7 +12,7 @@ from geo_mlops.tasks.segmentation.building.tiling.adapter import BuildingSegment
 TilingPolicyT = AllPolicy | RegularPolicy | HardMiningPolicy
 
 
-def build_building_adapter(adapter_cfg: Dict[str, Any]) -> BuildingSegmentationAdapter:
+def build_building_adapter(adapter_cfg: dict[str, Any]) -> BuildingSegmentationAdapter:
     return BuildingSegmentationAdapter(
         class_of_interest_id=int(adapter_cfg.get("class_of_interest_id")),
         shadow_id=adapter_cfg.get("shadow_id"),
@@ -23,7 +23,7 @@ def build_building_adapter(adapter_cfg: Dict[str, Any]) -> BuildingSegmentationA
 
 def build_tiling_components(
     task_cfg_path: str | Path,
-) -> tuple[TilingEngineConfig, BuildingSegmentationAdapter, TilingPolicyT, Dict[str, Any]]:
+) -> tuple[TilingEngineConfig, BuildingSegmentationAdapter, TilingPolicyT, dict[str, Any]]:
     cfg = load_cfg(task_cfg_path)
     tiling_cfg = require_section(cfg, "tiling")
 

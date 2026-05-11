@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
+
 from geo_mlops.core.contracts.inference_contract import (
     InferenceContract,
 )
+from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
+
 INFERENCE_MANIFEST_NAME = "inference_manifest.json"
 
 
@@ -25,13 +27,11 @@ def write_inference_contract(
     return manifest_path
 
 
-def load_inference_contract(
-    manifest_path: Path
-) -> InferenceContract:
+def load_inference_contract(manifest_path: Path) -> InferenceContract:
     """
     Load InferenceContract from inference_manifest.json.
     """
-    
+
     data = _load_json(manifest_path)
 
     return InferenceContract(
@@ -40,5 +40,5 @@ def load_inference_contract(
         model_path=Path(data.get("model_path")),
         num_scenes=int(data.get("num_scenes")),
         inference_cfg=dict(data.get("inference_cfg")),
-        prediction_table_path=Path(data.get("prediction_table_path"))
+        prediction_table_path=Path(data.get("prediction_table_path")),
     )

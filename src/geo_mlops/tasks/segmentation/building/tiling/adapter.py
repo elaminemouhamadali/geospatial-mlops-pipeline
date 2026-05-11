@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
+
+from geo_mlops.core.data.types import DiscoveredScene
 from geo_mlops.core.tiling.adapters.base import (
     DifficultyResult,
     SceneArrays,
     TileWindow,
 )
 from geo_mlops.tasks.segmentation.segmentation_adapter import SegmentationAdapter
-from geo_mlops.core.data.types import DiscoveredScene
 
 
 @dataclass
@@ -29,7 +30,7 @@ class BuildingSegmentationAdapter(SegmentationAdapter):
     """
 
     class_of_interest_id: int = 1
-    shadow_id: Optional[int] = 2
+    shadow_id: int | None = 2
     emit_shadow: bool = True
 
     # Gate for "hardness" to mimic old (min_change_pixels AND min_change_ratio) logic
@@ -88,7 +89,7 @@ class BuildingSegmentationAdapter(SegmentationAdapter):
 
         return DifficultyResult(value=value, details=details)
 
-    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> dict[str, Any]:
         _ = scene
 
         # Use base presence (foreground ratio); we only rename columns for building
@@ -96,7 +97,7 @@ class BuildingSegmentationAdapter(SegmentationAdapter):
         # base keys: gt_fg_px, gt_tot_px, gt_fg_ratio
         d = pres.details or {}
 
-        row: Dict[str, Any] = {
+        row: dict[str, Any] = {
             "building_ratio": float(pres.value),
             "building_pixels": int(d.get("gt_fg_px", 0)),
             "total_pixels": int(d.get("gt_tot_px", tw.tot)),

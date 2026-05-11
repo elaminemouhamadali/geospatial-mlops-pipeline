@@ -1,9 +1,11 @@
-from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, Mapping
-from pathlib import Path
 import json
+from collections.abc import Mapping
+from dataclasses import asdict, is_dataclass
+from pathlib import Path
+from typing import Any
 
-def _as_plain_dict(obj: Any) -> Dict[str, Any]:
+
+def _as_plain_dict(obj: Any) -> dict[str, Any]:
     if obj is None:
         return {}
 
@@ -16,7 +18,7 @@ def _as_plain_dict(obj: Any) -> Dict[str, Any]:
     return {"value": str(obj)}
 
 
-def _load_json(path: str | Path) -> Dict[str, Any]:
+def _load_json(path: str | Path) -> dict[str, Any]:
     p = Path(path)
 
     if not p.exists():
@@ -28,6 +30,7 @@ def _load_json(path: str | Path) -> Dict[str, Any]:
         raise ValueError(f"Expected JSON object at root of {p}")
 
     return obj
+
 
 def _to_jsonable(obj: Any) -> Any:
     if is_dataclass(obj):
@@ -44,11 +47,12 @@ def _to_jsonable(obj: Any) -> Any:
 
     return obj
 
+
 def _ensure_path(value: str | Path) -> Path:
     return value if isinstance(value, Path) else Path(value)
+
 
 def _unique_group_values(df, group_col: str) -> list[str]:
     if group_col not in df.columns:
         raise ValueError(f"Expected group column {group_col!r} in split dataframe.")
     return sorted(map(str, df[group_col].dropna().unique().tolist()))
-

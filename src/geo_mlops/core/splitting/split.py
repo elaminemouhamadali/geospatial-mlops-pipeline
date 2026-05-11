@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -23,7 +24,7 @@ class SplitRatios:
     val: float
     test: float = 0.0
 
-    def as_dict(self) -> Dict[str, float]:
+    def as_dict(self) -> dict[str, float]:
         return {"train": float(self.train), "val": float(self.val), "test": float(self.test)}
 
 
@@ -58,15 +59,15 @@ class SplitConfig:
     predefined_col: str = "split"
 
     # filters / hygiene
-    min_any_ratio: Optional[float] = None
-    ratio_cols: Optional[List[str]] = None
-    dedupe_key: Optional[List[str]] = None  # e.g. ["image_src","x0","y0","x1","y1"]
+    min_any_ratio: float | None = None
+    ratio_cols: list[str] | None = None
+    dedupe_key: list[str] | None = None  # e.g. ["image_src","x0","y0","x1","y1"]
 
     # stratification (group-level)
-    group_metric_mode: Optional[str] = None  # "mean" | "presence_frac" | "majority_label"
-    group_metric_col: Optional[str] = None  # row-level source col to aggregate per group
+    group_metric_mode: str | None = None  # "mean" | "presence_frac" | "majority_label"
+    group_metric_col: str | None = None  # row-level source col to aggregate per group
     presence_eps: float = 0.001  # used only for presence_frac
-    bins: Optional[List[float]] = None  # used for mean/presence_frac
+    bins: list[float] | None = None  # used for mean/presence_frac
 
     # output naming helper
     prefix: str = "tiles"
@@ -76,21 +77,21 @@ class SplitConfig:
 class LeakageCheckResult:
     name: str
     ok: bool
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class SplitResult:
     train: pd.DataFrame
     val: pd.DataFrame
-    test: Optional[pd.DataFrame]
-    checks: List[LeakageCheckResult] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    test: pd.DataFrame | None
+    checks: list[LeakageCheckResult] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     # Added for MLOps artifacts / debugging
     resolved_group_col: str = ""
-    group_assignment: Dict[str, str] = field(default_factory=dict)  # group_id -> split
-    group_stats: Optional[pd.DataFrame] = None
+    group_assignment: dict[str, str] = field(default_factory=dict)  # group_id -> split
+    group_stats: pd.DataFrame | None = None
 
 
 # ======================================================================================
@@ -123,12 +124,12 @@ def parse_ratios(vals: Sequence[float]) -> SplitRatios:
     return SplitRatios(train=t, val=v, test=s)
 
 
-def resolve_group_col(df: pd.DataFrame, preferred: str = "scene_id") -> Tuple[str, List[str]]:
+def resolve_group_col(df: pd.DataFrame, preferred: str = "scene_id") -> tuple[str, list[str]]:
     """
     Chooses a grouping column for no-leakage splits.
     If preferred missing, fall back to image_src. Else create a surrogate.
     """
-    warnings: List[str] = []
+    warnings: list[str] = []
     if preferred in df.columns:
         return preferred, warnings
     if "image_src" in df.columns:
@@ -142,21 +143,27 @@ def resolve_group_col(df: pd.DataFrame, preferred: str = "scene_id") -> Tuple[st
 def _apply_min_any_ratio_filter(
     df: pd.DataFrame,
     *,
-    min_any_ratio: Optional[float],
-    ratio_cols: Optional[Sequence[str]],
-) -> Tuple[pd.DataFrame, Optional[str]]:
+    min_any_ratio: float | None,
+    ratio_cols: Sequence[str] | None,
+) -> tuple[pd.DataFrame, str | None]:
     if min_any_ratio is None:
         return df, None
 
     thr = float(min_any_ratio)
     cols = list(ratio_cols) if ratio_cols else []
     if not cols:
-        return df, f"[split] min_any_ratio={thr} requested but ratio_cols not provided; skipping filter"
+        return (
+            df,
+            f"[split] min_any_ratio={thr} requested but ratio_cols not provided; skipping filter",
+        )
 
     missing = [c for c in cols if c not in df.columns]
     present = [c for c in cols if c in df.columns]
     if not present:
-        return df, f"[split] min_any_ratio={thr} requested but none of ratio_cols exist: {missing}; skipping filter"
+        return (
+            df,
+            f"[split] min_any_ratio={thr} requested but none of ratio_cols exist: {missing}; skipping filter",
+        )
 
     out = df.copy()
     # keep rows where ANY ratio col >= thr
@@ -173,7 +180,7 @@ def _apply_min_any_ratio_filter(
     return out, msg
 
 
-def _apply_dedupe(df: pd.DataFrame, dedupe_key: Optional[Sequence[str]]) -> Tuple[pd.DataFrame, Optional[str]]:
+def _apply_dedupe(df: pd.DataFrame, dedupe_key: Sequence[str] | None) -> tuple[pd.DataFrame, str | None]:
     if not dedupe_key:
         return df, None
 
@@ -191,7 +198,7 @@ def _apply_dedupe(df: pd.DataFrame, dedupe_key: Optional[Sequence[str]]) -> Tupl
 
 
 def read_tiles_csvs(
-    inputs: Sequence[Union[str, Path]],
+    inputs: Sequence[str | Path],
     *,
     allow_empty: bool = False,
 ) -> pd.DataFrame:
@@ -199,7 +206,7 @@ def read_tiles_csvs(
     Reads one or more tile CSVs and concatenates them. Adds '_csv_path' provenance.
     CSV-only (no raster reads).
     """
-    paths: List[Path] = []
+    paths: list[Path] = []
     for x in inputs:
         p = Path(x)
         if p.is_dir():
@@ -211,7 +218,7 @@ def read_tiles_csvs(
     if not paths:
         raise FileNotFoundError("No CSV inputs found (paths do not exist or no *.csv under provided directories)")
 
-    dfs: List[pd.DataFrame] = []
+    dfs: list[pd.DataFrame] = []
     for p in paths:
         try:
             df = pd.read_csv(p)
@@ -272,18 +279,18 @@ def _group_presence_frac(df: pd.DataFrame, group_col: str, metric_col: str, eps:
     return tmp.groupby(group_col, dropna=False)["__present"].mean()
 
 
-def _deterministic_shuffle(items: List[Any], rng: np.random.Generator) -> List[Any]:
+def _deterministic_shuffle(items: list[Any], rng: np.random.Generator) -> list[Any]:
     idx = np.arange(len(items))
     rng.shuffle(idx)
     return [items[i] for i in idx.tolist()]
 
 
 def _assign_groups_random(
-    groups: List[str],
+    groups: list[str],
     *,
     ratios: SplitRatios,
     seed: int,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Deterministic random assignment of group ids to splits according to ratios.
     """
@@ -300,7 +307,7 @@ def _assign_groups_random(
     if n >= 2 and n_val == 0:
         n_val = 1
 
-    assignment: Dict[str, str] = {}
+    assignment: dict[str, str] = {}
     for g in groups_shuf[:n_train]:
         assignment[g] = "train"
     for g in groups_shuf[n_train : n_train + n_val]:
@@ -312,12 +319,12 @@ def _assign_groups_random(
 
 
 def _assign_groups_stratified(
-    groups_by_stratum: Mapping[str, List[str]],
+    groups_by_stratum: Mapping[str, list[str]],
     *,
     ratios: SplitRatios,
     seed: int,
-) -> Dict[str, str]:
-    assignment: Dict[str, str] = {}
+) -> dict[str, str]:
+    assignment: dict[str, str] = {}
     for stratum in sorted(groups_by_stratum.keys()):
         groups = list(groups_by_stratum[stratum])
         if not groups:
@@ -332,7 +339,7 @@ def materialize_splits(
     df: pd.DataFrame,
     group_col: str,
     group_assignment: Mapping[str, str],
-) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
     tmp = df.copy()
     if group_col not in tmp.columns:
         raise ValueError(f"group_col '{group_col}' not in dataframe")
@@ -355,15 +362,11 @@ def materialize_splits(
 def check_group_leakage(
     train: pd.DataFrame,
     val: pd.DataFrame,
-    test: Optional[pd.DataFrame],
+    test: pd.DataFrame | None,
     *,
     group_col: str,
 ) -> LeakageCheckResult:
-    if (
-        group_col not in train.columns
-        or group_col not in val.columns
-        or (test is not None and group_col not in test.columns)
-    ):
+    if group_col not in train.columns or group_col not in val.columns or (test is not None and group_col not in test.columns):
         return LeakageCheckResult(
             name="group_overlap",
             ok=False,
@@ -396,12 +399,12 @@ def check_group_leakage(
 def check_key_leakage(
     train: pd.DataFrame,
     val: pd.DataFrame,
-    test: Optional[pd.DataFrame],
+    test: pd.DataFrame | None,
     *,
     key_cols: Sequence[str],
 ) -> LeakageCheckResult:
     key = list(key_cols)
-    missing: List[str] = []
+    missing: list[str] = []
     for c in key:
         if c not in train.columns or c not in val.columns or (test is not None and c not in test.columns):
             missing.append(c)
@@ -428,18 +431,19 @@ def check_key_leakage(
     return LeakageCheckResult(
         name="dedupe_key_overlap",
         ok=ok,
-        details={"key_cols": key, "overlap_counts": {"train_val": ab, "train_test": ac, "val_test": bc}},
+        details={
+            "key_cols": key,
+            "overlap_counts": {"train_val": ab, "train_test": ac, "val_test": bc},
+        },
     )
 
 
-def check_image_src_overlap(train: pd.DataFrame, val: pd.DataFrame, test: Optional[pd.DataFrame]) -> LeakageCheckResult:
-    if (
-        "image_src" not in train.columns
-        or "image_src" not in val.columns
-        or (test is not None and "image_src" not in test.columns)
-    ):
+def check_image_src_overlap(train: pd.DataFrame, val: pd.DataFrame, test: pd.DataFrame | None) -> LeakageCheckResult:
+    if "image_src" not in train.columns or "image_src" not in val.columns or (test is not None and "image_src" not in test.columns):
         return LeakageCheckResult(
-            name="image_src_overlap", ok=True, details={"skipped": True, "reason": "image_src missing"}
+            name="image_src_overlap",
+            ok=True,
+            details={"skipped": True, "reason": "image_src missing"},
         )
 
     def uniq(df: pd.DataFrame) -> set:
@@ -473,8 +477,8 @@ def _compute_group_stats_for_stratification(
     mode: str,
     source_col: str,
     presence_eps: float,
-    bins: Optional[Sequence[float]],
-) -> Tuple[pd.DataFrame, pd.Series, Dict[str, Any]]:
+    bins: Sequence[float] | None,
+) -> tuple[pd.DataFrame, pd.Series, dict[str, Any]]:
     """
     Returns:
       - group_stats df (indexed by group id col)
@@ -490,7 +494,7 @@ def _compute_group_stats_for_stratification(
 
     grp_size = tmp.groupby(group_col, dropna=False).size().rename("n_rows")
 
-    strat_info: Dict[str, Any] = {
+    strat_info: dict[str, Any] = {
         "mode": mode,
         "group_col": group_col,
         "group_metric_col": source_col,
@@ -544,10 +548,8 @@ def _compute_group_stats_for_stratification(
     raise ValueError(f"Unknown group_metric_mode='{mode}' (expected mean|presence_frac|majority_label)")
 
 
-def split_grouped(
-    df: pd.DataFrame, *, config: SplitConfig
-) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], List[str], str, Dict[str, str], pd.DataFrame]:
-    warnings: List[str] = []
+def split_grouped(df: pd.DataFrame, *, config: SplitConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, list[str], str, dict[str, str], pd.DataFrame]:
+    warnings: list[str] = []
     group_col, w = resolve_group_col(df, preferred=config.group_col)
     warnings.extend(w)
 
@@ -569,10 +571,8 @@ def split_grouped(
     return train, val, test, warnings, group_col, assignment, group_stats
 
 
-def split_predefined(
-    df: pd.DataFrame, *, config: SplitConfig
-) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], List[str], str, Dict[str, str], pd.DataFrame]:
-    warnings: List[str] = []
+def split_predefined(df: pd.DataFrame, *, config: SplitConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, list[str], str, dict[str, str], pd.DataFrame]:
+    warnings: list[str] = []
     group_col, w = resolve_group_col(df, preferred=config.group_col)
     warnings.extend(w)
 
@@ -583,9 +583,7 @@ def split_predefined(
 
     col = config.predefined_col
     if col not in tmp.columns:
-        warnings.append(
-            f"[split] predefined policy requested but predefined_col='{col}' missing; falling back to grouped"
-        )
+        warnings.append(f"[split] predefined policy requested but predefined_col='{col}' missing; falling back to grouped")
         return split_grouped(tmp, config=config)
 
     labels = tmp[col]
@@ -595,7 +593,7 @@ def split_predefined(
     free = tmp[~tmp.index.isin(fixed.index)].copy()
 
     # assign unlabeled groups deterministically
-    assignment: Dict[str, str] = {}
+    assignment: dict[str, str] = {}
     if not free.empty:
         uniq_groups = sorted(free[group_col].unique().tolist())
         free_assign = _assign_groups_random(uniq_groups, ratios=config.ratios, seed=config.seed)
@@ -627,10 +625,17 @@ def split_predefined(
 
 def split_stratified(
     df: pd.DataFrame, *, config: SplitConfig
-) -> Tuple[
-    pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], List[str], str, Dict[str, str], Dict[str, Any], pd.DataFrame
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame | None,
+    list[str],
+    str,
+    dict[str, str],
+    dict[str, Any],
+    pd.DataFrame,
 ]:
-    warnings: List[str] = []
+    warnings: list[str] = []
     group_col, w = resolve_group_col(df, preferred=config.group_col)
     warnings.extend(w)
 
@@ -643,9 +648,7 @@ def split_stratified(
     source_col = (config.group_metric_col or "").strip()
 
     if not mode or not source_col:
-        warnings.append(
-            "[split] stratified policy requested but group_metric_mode/col not set; falling back to grouped"
-        )
+        warnings.append("[split] stratified policy requested but group_metric_mode/col not set; falling back to grouped")
         train, val, test, w2, gcol, assignment, group_stats = split_grouped(tmp, config=config)
         warnings.extend(w2)
         return (
@@ -669,7 +672,7 @@ def split_stratified(
     )
 
     # build mapping stratum -> groups
-    groups_by_stratum: Dict[str, List[str]] = {}
+    groups_by_stratum: dict[str, list[str]] = {}
     for gid, lab in strata_series.items():
         groups_by_stratum.setdefault(str(lab), []).append(str(gid))
 
@@ -700,7 +703,7 @@ def split_stratified(
 
 
 def make_splits(df: pd.DataFrame, *, config: SplitConfig) -> SplitResult:
-    warnings: List[str] = []
+    warnings: list[str] = []
     tmp = df.copy()
 
     tmp, w = _apply_min_any_ratio_filter(tmp, min_any_ratio=config.min_any_ratio, ratio_cols=config.ratio_cols)
@@ -720,15 +723,13 @@ def make_splits(df: pd.DataFrame, *, config: SplitConfig) -> SplitResult:
         warnings.extend(w2)
 
     elif config.policy == "stratified":
-        train, val, test, w2, resolved_group_col, assignment, strat_info, group_stats = split_stratified(
-            tmp, config=config
-        )
+        train, val, test, w2, resolved_group_col, assignment, strat_info, group_stats = split_stratified(tmp, config=config)
         warnings.extend(w2)
 
     else:
         raise ValueError(f"Unknown policy '{config.policy}'. Expected: grouped|stratified|predefined")
 
-    checks: List[LeakageCheckResult] = [
+    checks: list[LeakageCheckResult] = [
         check_group_leakage(train, val, test, group_col=resolved_group_col),
         check_image_src_overlap(train, val, test),
     ]
@@ -747,6 +748,6 @@ def make_splits(df: pd.DataFrame, *, config: SplitConfig) -> SplitResult:
     )
 
 
-def make_splits_from_csvs(inputs: Sequence[Union[str, Path]], *, config: SplitConfig) -> SplitResult:
+def make_splits_from_csvs(inputs: Sequence[str | Path], *, config: SplitConfig) -> SplitResult:
     df = read_tiles_csvs(inputs)
     return make_splits(df, config=config)

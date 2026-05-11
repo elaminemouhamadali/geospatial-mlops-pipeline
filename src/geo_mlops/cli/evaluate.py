@@ -1,22 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
-from geo_mlops.core.io.inference_io import load_inference_contract
 from geo_mlops.core.evaluation.engine import run_prediction_evaluation
+from geo_mlops.core.io.inference_io import load_inference_contract
 from geo_mlops.core.registry.task_registry import get_task
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description=(
-            "Run full-scene sliding-window evaluation on a golden dataset using "
-            "a trained task model."
-        )
-    )
+    p = argparse.ArgumentParser(description=("Run full-scene sliding-window evaluation on a golden dataset using a trained task model."))
     p.add_argument(
         "--task",
         type=str,
@@ -57,7 +51,7 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_argparser().parse_args(argv)
     args.eval_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -74,12 +68,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     if args.execution_backend == "ray":
+        from geo_mlops.core.evaluation.ray_runner import run_prediction_evaluation_ray
         from geo_mlops.core.execution.ray_backend import (
             RayBackendConfig,
             init_ray_backend,
             shutdown_ray_backend,
         )
-        from geo_mlops.core.evaluation.ray_runner import run_prediction_evaluation_ray
 
         ray_cfg = RayBackendConfig(
             address=args.ray_address,

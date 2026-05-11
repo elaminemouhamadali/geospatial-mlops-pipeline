@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
+
 from geo_mlops.core.registry.task_registry import get_task
 from geo_mlops.core.tiling.stage import run_tiling_stage
 
 
-def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(
-        description=(
-            "Generate tile CSVs using a task-agnostic tiling engine "
-            "and task-specific adapter/policy components."
-        )
-    )
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description=("Generate tile CSVs using a task-agnostic tiling engine and task-specific adapter/policy components."))
     ap.add_argument(
         "--task",
         type=str,
@@ -57,7 +53,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     return ap.parse_args(argv)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
 
     task_plugin = get_task(args.task)

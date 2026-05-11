@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Dict
+from typing import Any
+
 import torch
 
 
@@ -28,6 +29,7 @@ class DiscoveredScene:
 
     meta: dict[str, Any] | None = None
 
+
 @dataclass(frozen=True)
 class SceneArrays:
     """
@@ -47,6 +49,6 @@ class SceneArrays:
     """
 
     image: torch.Tensor
-    target: Optional[Any] = None
-    context: Optional[torch.Tensor] = None
-    profile: Optional[Dict[str, Any]] = None
+    target: Any | None = None
+    context: torch.Tensor | None = None
+    profile: dict[str, Any] | None = None

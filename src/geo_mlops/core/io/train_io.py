@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
+
 from geo_mlops.core.contracts.train_contract import (
     TrainContract,
 )
+from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
+
 TRAIN_MANIFEST_NAME = "train_manifest.json"
 METRICS_MANIFEST_NAME = "metrics.json"
 
 
-def write_train_contract(
-    contract: TrainContract, 
-    manifest_name: str = TRAIN_MANIFEST_NAME
-) -> Path:
+def write_train_contract(contract: TrainContract, manifest_name: str = TRAIN_MANIFEST_NAME) -> Path:
     """
     Write train_manifest.json for a completed training stage.
     """

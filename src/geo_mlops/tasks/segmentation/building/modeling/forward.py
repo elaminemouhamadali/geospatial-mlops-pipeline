@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import torch
 
 
 def building_forward_fn(
     model: torch.nn.Module,
-    batch: Dict[str, Any],
+    batch: dict[str, Any],
     device: torch.device,
 ) -> torch.Tensor:
     if "tile_tensor" not in batch:

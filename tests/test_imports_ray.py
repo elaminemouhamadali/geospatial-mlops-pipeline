@@ -3,6 +3,7 @@ def test_ray_optional_imports():
 
     assert ray is not None
 
+
 if __name__ == "__main__":
     test_ray_optional_imports()
     print("ray import tests OK")

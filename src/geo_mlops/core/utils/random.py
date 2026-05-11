@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 import random
+
 import numpy as np
 import torch
+
 
 def _seed_everything(seed: int) -> None:
     random.seed(seed)

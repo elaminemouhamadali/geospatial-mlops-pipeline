@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
+
 from geo_mlops.core.registry.task_registry import get_task
 from geo_mlops.core.splitting.stage import run_split_stage
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Create deterministic group-aware train/val(/test) splits from a tiling output directory."
-    )
+    p = argparse.ArgumentParser(description="Create deterministic group-aware train/val(/test) splits from a tiling output directory.")
     p.add_argument(
         "--task",
         type=str,
@@ -45,18 +44,14 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_argparser().parse_args(argv)
 
     task_plugin = get_task(args.task)
 
-    splitting_cfg = task_plugin.build_splitting_cfg(
-        task_cfg_path=args.task_cfg_path
-    )
+    splitting_cfg = task_plugin.build_splitting_cfg(task_cfg_path=args.task_cfg_path)
 
-    split_engine_cfg, group_list_prefix = task_plugin.build_split_engine_cfg(
-        splitting_cfg
-    )
+    split_engine_cfg, group_list_prefix = task_plugin.build_split_engine_cfg(splitting_cfg)
 
     manifest_path, contract = run_split_stage(
         task=args.task,

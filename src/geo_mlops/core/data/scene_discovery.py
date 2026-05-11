@@ -1,7 +1,8 @@
 # geo_mlops/core/datasets/scene_discovery.py
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Sequence, Optional, Any
+from typing import Any
 
 from geo_mlops.core.data.types import DatasetLayout, DiscoveredScene
 from geo_mlops.core.utils.resolve_paths import _relaxed_lookup, _tif_map
@@ -63,11 +64,7 @@ def discover_sub_roi_scenes(
     if layout.preds_dirname is not None and (pred_dir is None or not pred_dir.is_dir()):
         stats["sub_roi_pred_missing"] = True
 
-    stems = (
-        stems_to_process_fn(pan_map, gt_map)
-        if stems_to_process_fn is not None
-        else sorted(pan_map.keys())
-    )
+    stems = stems_to_process_fn(pan_map, gt_map) if stems_to_process_fn is not None else sorted(pan_map.keys())
 
     scenes: list[DiscoveredScene] = []
 
@@ -114,7 +111,7 @@ def discover_roi_scenes(
     *,
     roi_dir: Path,
     layout: DatasetLayout,
-    stems_to_process_fn: Optional[Callable[[dict[str, Path], dict[str, Path]], Sequence[str]]] = None,
+    stems_to_process_fn: Callable[[dict[str, Path], dict[str, Path]], Sequence[str]] | None = None,
     require_gt_dir: bool = False,
     require_context_dir: bool = False,
     require_nonempty_gt_map: bool = False,
@@ -192,8 +189,8 @@ def discover_dataset_scenes(
     *,
     dataset_root: Path,
     layout: DatasetLayout,
-    roi_names: Optional[Sequence[str]] = None,
-    stems_to_process_fn: Optional[Callable[[dict[str, Path], dict[str, Path]], Sequence[str]]] = None,
+    roi_names: Sequence[str] | None = None,
+    stems_to_process_fn: Callable[[dict[str, Path], dict[str, Path]], Sequence[str]] | None = None,
     require_gt_dir: bool = False,
     require_context_dir: bool = False,
     require_nonempty_gt_map: bool = False,
@@ -236,10 +233,7 @@ def discover_dataset_scenes(
 
     missing = [p for p in roi_dirs if not p.exists()]
     if missing:
-        raise FileNotFoundError(
-            "Missing ROI directory/directories: "
-            + ", ".join(str(p) for p in missing)
-        )
+        raise FileNotFoundError("Missing ROI directory/directories: " + ", ".join(str(p) for p in missing))
 
     roi_dirs = [p for p in roi_dirs if p.is_dir()]
     resolved_roi_names = [p.name for p in roi_dirs]

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import importlib
 from dataclasses import dataclass
-from typing import Dict, Protocol, runtime_checkable
-
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -41,7 +40,6 @@ class TaskPlugin(Protocol):
     def build_evaluation_cfg(self): ...
     def build_prediction_evaluator(self): ...
     def build_eval_metric_accumulator(self): ...
-    
 
 
 @dataclass(frozen=True)
@@ -50,7 +48,7 @@ class TaskSpec:
     plugin_path: str  # "pkg.module:object_or_factory"
 
 
-_TASKS: Dict[str, TaskSpec] = {
+_TASKS: dict[str, TaskSpec] = {
     "building_seg": TaskSpec(
         name="building_seg",
         plugin_path="geo_mlops.tasks.segmentation.building.task:BuildingSegmentationTask",
@@ -63,7 +61,7 @@ _TASKS: Dict[str, TaskSpec] = {
 }
 
 
-_PLUGIN_CACHE: Dict[str, TaskPlugin] = {}
+_PLUGIN_CACHE: dict[str, TaskPlugin] = {}
 
 
 def list_tasks() -> list[str]:
@@ -99,16 +97,10 @@ def get_task(task_name: str) -> TaskPlugin:
         plugin = symbol
 
     if not isinstance(plugin, TaskPlugin):
-        raise TypeError(
-            f"Task plugin for {task_name!r} does not implement TaskPlugin protocol. "
-            f"Loaded object: {plugin!r}"
-        )
+        raise TypeError(f"Task plugin for {task_name!r} does not implement TaskPlugin protocol. Loaded object: {plugin!r}")
 
     if plugin.name != task_name:
-        raise ValueError(
-            f"Task plugin name mismatch: registry key={task_name!r}, "
-            f"plugin.name={plugin.name!r}"
-        )
+        raise ValueError(f"Task plugin name mismatch: registry key={task_name!r}, plugin.name={plugin.name!r}")
 
     _PLUGIN_CACHE[task_name] = plugin
     return plugin

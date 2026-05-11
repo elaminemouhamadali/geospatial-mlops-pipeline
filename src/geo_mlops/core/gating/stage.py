@@ -1,9 +1,9 @@
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
+from geo_mlops.core.config.loader import load_cfg
 from geo_mlops.core.contracts.gate_contract import GateContract
 from geo_mlops.core.gating.engine import run_gate
-from geo_mlops.core.config.loader import load_cfg 
 
 
 def run_gate_stage(
@@ -38,10 +38,7 @@ def run_gate_stage(
 
     threshold_spec = gating.get(gate_name)
     if not isinstance(threshold_spec, Mapping):
-        raise ValueError(
-            f"Task config missing gating.{gate_name!r}. "
-            f"Available gates: {sorted(gating.keys())}"
-        )
+        raise ValueError(f"Task config missing gating.{gate_name!r}. Available gates: {sorted(gating.keys())}")
 
     metrics_payload = load_cfg(metrics_file_path)
 

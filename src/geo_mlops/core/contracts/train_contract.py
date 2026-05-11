@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -36,15 +36,15 @@ class TrainContract:
     # -------------------------
     # Task training config snapshot
     # -------------------------
-    train_cfg: Dict[str, Any]
+    train_cfg: dict[str, Any]
 
     # -------------------------
     # Model selection metadata
     # -------------------------
-    best_metric_value: Optional[float]
-    best_epoch: Optional[int]
+    best_metric_value: float | None
+    best_epoch: int | None
 
     # -------------------------
     # Optional tracking/callback state
     # -------------------------
-    tracking: Dict[str, Any] = field(default_factory=dict)
+    tracking: dict[str, Any] = field(default_factory=dict)

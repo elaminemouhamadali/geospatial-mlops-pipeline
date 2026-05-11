@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-from typing import Optional, Sequence
+from collections.abc import Sequence
 from datetime import datetime
+from pathlib import Path
 
-from geo_mlops.core.utils.cuda import _resolve_device
 from geo_mlops.core.io.split_io import load_split_contract
 from geo_mlops.core.io.tile_io import load_tiles_contract
 from geo_mlops.core.registry.task_registry import get_task
 from geo_mlops.core.training.engine import train_one_run
 from geo_mlops.core.training.mlflow_callbacks import MLflowTrainingCallback
+from geo_mlops.core.utils.cuda import _resolve_device
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(
-        description="Train a task model from tiling + split contracts."
-    )
+    ap = argparse.ArgumentParser(description="Train a task model from tiling + split contracts.")
 
     ap.add_argument(
         "--task",
@@ -59,7 +57,7 @@ def build_argparser() -> argparse.ArgumentParser:
 
     # Optional runtime overrides. If omitted, values come from training.engine.
     ap.add_argument("--device", type=str, default="cuda")
-    
+
     ap.add_argument("--mlflow", action="store_true", help="Enable MLflow logging.")
     ap.add_argument("--mlflow-tracking-uri", type=str, default=None)
     ap.add_argument("--mlflow-experiment", type=str, default=None)
@@ -80,7 +78,7 @@ def default_run_name(
     return "/".join(parts)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_argparser().parse_args(argv)
     args.train_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -93,9 +91,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     split_contract = load_split_contract(args.split_manifest_path)
 
     if tiles_contract.task != args.task:
-        raise ValueError(
-            f"Task mismatch: --task={args.task!r}, tiles.task={tiles_contract.task!r}"
-        )
+        raise ValueError(f"Task mismatch: --task={args.task!r}, tiles.task={tiles_contract.task!r}")
 
     # -------------------------------------------------------------------------
     # Load task training config
@@ -138,7 +134,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     "task_cfg": str(args.task_cfg_path),
                     "tiles_manifest_path": str(args.tiles_manifest_path),
                     "split_manifest_path": str(args.split_manifest_path),
-                }
+                },
             )
         )
     # -------------------------------------------------------------------------
@@ -159,7 +155,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         train_cfg=train_cfg,
     )
 
-    print(f"[train] done")
+    print("[train] done")
     print(f"[train] model={contract.model_path}")
     print(f"[train] metrics={contract.metrics_path}")
     print(f"[train] manifest={manifest_path}")

@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
+
 import numpy as np
 import rasterio
+
 from geo_mlops.tasks.segmentation.building.modeling.metrics import (
     BuildingSegmentationEvalAccumulator,
 )
 
 
-def build_eval_metric_accumulator(eval_cfg: Dict[str, Any]):
+def build_eval_metric_accumulator(eval_cfg: dict[str, Any]):
     return BuildingSegmentationEvalAccumulator(eval_cfg)
 
 

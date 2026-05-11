@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
+
+import torch
 
 from geo_mlops.core.config.loader import load_cfg, require_section
 from geo_mlops.core.data.types import DatasetLayout
 from geo_mlops.core.inference.types import InferenceConfig
-import torch
 
 
-def build_inference_cfg(task_cfg_path: str | Path) -> Dict[str, Any]:
+def build_inference_cfg(task_cfg_path: str | Path) -> dict[str, Any]:
     cfg = load_cfg(task_cfg_path)
 
     return {
@@ -19,10 +20,8 @@ def build_inference_cfg(task_cfg_path: str | Path) -> Dict[str, Any]:
     }
 
 
-def resolve_inference_layout(inference_cfg: Dict[str, Any]) -> DatasetLayout:
-    tiling_engine_cfg = (
-        inference_cfg.get("tiling").get("engine")
-    )
+def resolve_inference_layout(inference_cfg: dict[str, Any]) -> DatasetLayout:
+    tiling_engine_cfg = inference_cfg.get("tiling").get("engine")
 
     return DatasetLayout(
         pan_dirname=str(tiling_engine_cfg.get("pan_dirname")),
@@ -32,7 +31,7 @@ def resolve_inference_layout(inference_cfg: Dict[str, Any]) -> DatasetLayout:
     )
 
 
-def resolve_inference_data_cfg(inference_cfg: Dict[str, Any]) -> Dict[str, Any]:
+def resolve_inference_data_cfg(inference_cfg: dict[str, Any]) -> dict[str, Any]:
     training_dataset_cfg = inference_cfg.get("training").get("dataset")
     training_loss_cfg = inference_cfg.get("training").get("loss")
 
@@ -45,7 +44,7 @@ def resolve_inference_data_cfg(inference_cfg: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_inference_engine_cfg(inference_cfg: Dict[str, Any]) -> InferenceConfig:
+def build_inference_engine_cfg(inference_cfg: dict[str, Any]) -> InferenceConfig:
     engine_cfg = inference_cfg["inference"].get("engine")
 
     return InferenceConfig(

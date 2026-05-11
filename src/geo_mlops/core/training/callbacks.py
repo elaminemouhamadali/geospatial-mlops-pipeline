@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any
 
 import torch
 
@@ -13,8 +14,8 @@ class TrainingCallback:
         model: torch.nn.Module,
         train_dir_path: Path,
         device: torch.device,
-        train_cfg: Dict[str, Any],
-        engine_cfg: Dict[str, Any],
+        train_cfg: dict[str, Any],
+        engine_cfg: dict[str, Any],
     ) -> None:
         pass
 
@@ -22,7 +23,7 @@ class TrainingCallback:
         self,
         *,
         epoch: int,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
     ) -> None:
         pass
 
@@ -46,12 +47,12 @@ class TrainingCallback:
     ) -> None:
         pass
 
-    def state_dict(self) -> Dict[str, Any]:
+    def state_dict(self) -> dict[str, Any]:
         return {}
 
 
 class CallbackList:
-    def __init__(self, callbacks: Optional[Iterable[TrainingCallback]] = None):
+    def __init__(self, callbacks: Iterable[TrainingCallback] | None = None):
         self.callbacks = list(callbacks or [])
 
     def on_train_start(
@@ -60,8 +61,8 @@ class CallbackList:
         model: torch.nn.Module,
         train_dir_path: Path,
         device: torch.device,
-        train_cfg: Dict[str, Any],
-        engine_cfg: Dict[str, Any],
+        train_cfg: dict[str, Any],
+        engine_cfg: dict[str, Any],
     ) -> None:
         for cb in self.callbacks:
             cb.on_train_start(
@@ -76,7 +77,7 @@ class CallbackList:
         self,
         *,
         epoch: int,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
     ) -> None:
         for cb in self.callbacks:
             cb.on_epoch_end(epoch=epoch, metrics=metrics)
@@ -113,8 +114,8 @@ class CallbackList:
                 metrics_path=metrics_path,
             )
 
-    def state_dict(self) -> Dict[str, Any]:
-        state: Dict[str, Any] = {}
+    def state_dict(self) -> dict[str, Any]:
+        state: dict[str, Any] = {}
 
         for cb in self.callbacks:
             cb_state = cb.state_dict()

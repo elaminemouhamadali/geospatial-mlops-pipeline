@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Sequence, Dict
 
 
 def _resolve_dataset_roots(
     dataset_root_path: Path,
-) -> List[Path]:
+) -> list[Path]:
     root = Path(dataset_root_path)
 
     if not root.exists():
@@ -20,7 +19,7 @@ def _resolve_dataset_roots(
     return roots
 
 
-def _relaxed_lookup(stem: str, mapping: Dict[str, Path]) -> Optional[Path]:
+def _relaxed_lookup(stem: str, mapping: dict[str, Path]) -> Path | None:
     p = mapping.get(stem)
     if p is not None:
         return p
@@ -28,6 +27,7 @@ def _relaxed_lookup(stem: str, mapping: Dict[str, Path]) -> Optional[Path]:
         if stem.startswith(k) or k.startswith(stem):
             return v
     return None
+
 
 def _tif_map(root: Path) -> dict[str, Path]:
     if not root.is_dir():

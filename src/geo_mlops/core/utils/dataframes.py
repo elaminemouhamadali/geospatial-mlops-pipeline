@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
+
 import pandas as pd
 
 
 def write_subdir_csv(
     subdir: Path,
-    rows: List[Dict[str, Any]],
+    rows: list[dict[str, Any]],
     csv_name: str,
-) -> Optional[Path]:
+) -> Path | None:
     if not rows:
         return None
 
@@ -60,7 +62,7 @@ def _sort_master(
     return df
 
 
-def _merge_stats(dst: Dict[str, Any], src: Dict[str, Any]) -> None:
+def _merge_stats(dst: dict[str, Any], src: dict[str, Any]) -> None:
     """
     Merge integer/bool stats without clobbering identity fields.
     """

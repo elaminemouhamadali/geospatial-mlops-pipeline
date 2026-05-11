@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import pandas as pd
 from tqdm import tqdm
 
-from geo_mlops.core.data.types import DatasetLayout
 from geo_mlops.core.data.scene_discovery import discover_sub_roi_scenes
+from geo_mlops.core.data.types import DatasetLayout
 from geo_mlops.core.tiling.engine import RoiTilingEngine
 from geo_mlops.core.utils.dataframes import (
     _merge_stats,
@@ -58,7 +58,7 @@ def scan_sub_roi(
     *,
     force: bool = False,
     verbose: bool = False,
-) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
     Scan one sub-ROI directory.
 
@@ -88,7 +88,7 @@ def scan_sub_roi(
     roi_name = sub_roi_dir.parent.name
     sub_roi_name = sub_roi_dir.name
 
-    stats: Dict[str, Any] = dict(
+    stats: dict[str, Any] = dict(
         roi=roi_name,
         sub_roi=sub_roi_name,
         skipped_existing_csv=0,
@@ -118,10 +118,7 @@ def scan_sub_roi(
         stats["skipped_existing_csv"] = 1
 
         if verbose:
-            tqdm.write(
-                f"[SKIP] {roi_name}/{sub_roi_name}: "
-                f"found existing {csv_name} ({len(df_existing)} rows)"
-            )
+            tqdm.write(f"[SKIP] {roi_name}/{sub_roi_name}: found existing {csv_name} ({len(df_existing)} rows)")
 
         return _sort_master(df_existing), stats
 
@@ -218,9 +215,9 @@ def scan_roi(
     roi_name = roi_dir.name
     sub_roi_dirs = [p for p in sorted(roi_dir.iterdir()) if p.is_dir()]
 
-    all_rows: List[Dict[str, Any]] = []
+    all_rows: list[dict[str, Any]] = []
 
-    roi_stats: Dict[str, Any] = defaultdict(int)
+    roi_stats: dict[str, Any] = defaultdict(int)
     roi_stats["roi"] = roi_name
 
     for sub_roi_dir in tqdm(sub_roi_dirs, desc=f"Sub-ROIs ({roi_name})"):
@@ -288,7 +285,7 @@ def scan_full_dataset(
     *,
     force: bool,
     verbose: bool,
-) -> Tuple[pd.DataFrame, List[str]]:
+) -> tuple[pd.DataFrame, list[str]]:
     """
     Scan all top-level ROIs under dataset_root_path.
 
@@ -319,7 +316,7 @@ def scan_full_dataset(
     if not roi_dirs:
         raise ValueError(f"No ROI directories found under: {dataset_root_path}")
 
-    dfs: List[pd.DataFrame] = []
+    dfs: list[pd.DataFrame] = []
 
     for roi_dir in roi_dirs:
         df_roi = scan_roi(

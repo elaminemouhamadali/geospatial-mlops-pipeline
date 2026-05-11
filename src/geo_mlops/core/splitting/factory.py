@@ -1,21 +1,20 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from geo_mlops.core.config.loader import load_cfg, require_section
 from geo_mlops.core.splitting.split import SplitConfig, parse_ratios
 
-
 _VALID_SPLIT_POLICIES = {"grouped", "stratified", "predefined"}
 
 
-def build_splitting_cfg(task_cfg_path: str | Path) -> Dict[str, Any]:
+def build_splitting_cfg(task_cfg_path: str | Path) -> dict[str, Any]:
     cfg = load_cfg(task_cfg_path)
     return require_section(cfg, "splitting")
 
 
-def build_split_engine_cfg(splitting_cfg: Dict[str, Any]) -> tuple[SplitConfig, str]:
+def build_split_engine_cfg(splitting_cfg: dict[str, Any]) -> tuple[SplitConfig, str]:
     engine_cfg = splitting_cfg.get("engine", {}) or {}
     outputs_cfg = splitting_cfg.get("outputs", {}) or {}
 
@@ -29,10 +28,7 @@ def build_split_engine_cfg(splitting_cfg: Dict[str, Any]) -> tuple[SplitConfig, 
 
     policy = str(engine_cfg.get("policy", "grouped")).strip().lower()
     if policy not in _VALID_SPLIT_POLICIES:
-        raise ValueError(
-            f"Invalid splitting.engine.policy={policy!r}. "
-            f"Expected one of: {sorted(_VALID_SPLIT_POLICIES)}"
-        )
+        raise ValueError(f"Invalid splitting.engine.policy={policy!r}. Expected one of: {sorted(_VALID_SPLIT_POLICIES)}")
 
     bins_raw = engine_cfg.get("bins")
     bins = [float(x) for x in bins_raw] if bins_raw is not None else None

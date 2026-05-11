@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
+
 import torch
+
 
 @dataclass(frozen=True)
 class InferenceConfig:
@@ -29,11 +31,12 @@ class InferencePrediction:
     extra:
       Optional task-specific metadata.
     """
+
     logits: torch.Tensor
     probability: torch.Tensor
-    extra: Optional[Dict[str, Any]] = None
+    extra: dict[str, Any] | None = None
 
-  
+
 @dataclass(frozen=True)
 class InferenceArtifacts:
     """
@@ -48,5 +51,6 @@ class InferenceArtifacts:
     extra:
       Optional task-specific metadata.
     """
+
     logits_path: Path
     probability_path: Path

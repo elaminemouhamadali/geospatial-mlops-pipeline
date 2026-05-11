@@ -1,6 +1,6 @@
-from typing import Optional
 import torch
 import torch.nn as nn
+
 
 class ConcatFusionHead(nn.Module):
     """
@@ -19,7 +19,7 @@ class ConcatFusionHead(nn.Module):
         ctx_channels: int = 1,
         add_coords: bool = True,
         expect_ctx: bool = True,
-        inner_in_channels: Optional[int] = None,
+        inner_in_channels: int | None = None,
         use_1x1_proj: bool = False,
     ):
         super().__init__()
@@ -30,9 +30,7 @@ class ConcatFusionHead(nn.Module):
         self.expect_ctx = bool(expect_ctx)
 
         # Compute fused input channels (constant)
-        self.fused_in_channels = self.tile_channels \
-            + (self.ctx_channels if self.expect_ctx else 0) \
-            + (2 if self.add_coords else 0)
+        self.fused_in_channels = self.tile_channels + (self.ctx_channels if self.expect_ctx else 0) + (2 if self.add_coords else 0)
 
         # Optional projection to match inner expected channels
         # If not provided, default to "no projection" if channels match
@@ -45,14 +43,10 @@ class ConcatFusionHead(nn.Module):
             self.proj = nn.Conv2d(self.fused_in_channels, self.inner_in_channels, kernel_size=1)
         else:
             if self.fused_in_channels != self.inner_in_channels:
-                raise ValueError(
-                    f"Channels mismatch: fused_in_channels={self.fused_in_channels} "
-                    f"!= inner_in_channels={self.inner_in_channels}. "
-                    f"Either set use_1x1_proj=True or make them equal."
-                )
+                raise ValueError(f"Channels mismatch: fused_in_channels={self.fused_in_channels} != inner_in_channels={self.inner_in_channels}. Either set use_1x1_proj=True or make them equal.")
             self.proj = nn.Identity()
 
-    def forward(self, tile: torch.Tensor, ctx: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, tile: torch.Tensor, ctx: torch.Tensor | None = None) -> torch.Tensor:
         # tile: (B, Ct, H, W)
         if tile.ndim != 4:
             raise ValueError(f"tile must be (B,C,H,W); got {tuple(tile.shape)}")
@@ -82,7 +76,7 @@ class ConcatFusionHead(nn.Module):
             parts.append(self._make_coords(b, h, w, tile.device, tile.dtype))
 
         x = torch.cat(parts, dim=1)  # (B, fused_in_channels, H, W)
-        x = self.proj(x)             # (B, inner_in_channels, H, W) or Identity
+        x = self.proj(x)  # (B, inner_in_channels, H, W) or Identity
 
         return self.inner(x)
 

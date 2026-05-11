@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any
 
 import torch
 from torch.utils.data import DataLoader
 
 from geo_mlops.core.contracts.train_contract import TrainContract
 from geo_mlops.core.io.train_io import write_train_contract
+from geo_mlops.core.training.callbacks import CallbackList, TrainingCallback
+from geo_mlops.core.utils.cuda import _infer_batch_size
 from geo_mlops.core.utils.dataclasses import _as_plain_dict
 from geo_mlops.core.utils.random import _seed_everything
-from geo_mlops.core.utils.cuda import _infer_batch_size
-from geo_mlops.core.training.callbacks import CallbackList, TrainingCallback
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ class TrainConfig:
     selection_mode: str = "min"  # "min" or "max"
 
 
-def _is_better(value: float, best: Optional[float], mode: str) -> bool:
+def _is_better(value: float, best: float | None, mode: str) -> bool:
     if best is None:
         return True
     if mode == "min":
@@ -37,26 +38,26 @@ def _is_better(value: float, best: Optional[float], mode: str) -> bool:
     raise ValueError(f"selection_mode must be 'min' or 'max', got {mode!r}")
 
 
-def _prefix_metrics(prefix: str, metrics: Dict[str, float]) -> Dict[str, float]:
+def _prefix_metrics(prefix: str, metrics: dict[str, float]) -> dict[str, float]:
     return {f"{prefix}/{k}": float(v) for k, v in metrics.items()}
 
 
 def train_one_run(
     *,
     model: torch.nn.Module,
-    loss_fn: Callable[[Any, Dict[str, Any]], torch.Tensor],
+    loss_fn: Callable[[Any, dict[str, Any]], torch.Tensor],
     train_ds,
     val_ds,
     train_dir_path: Path,
     device: torch.device,
     engine_cfg: TrainConfig,
-    forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
+    forward_fn: Callable[[torch.nn.Module, dict[str, Any], torch.device], Any],
     task: str,
-    train_cfg: Dict[str, Any],
-    metrics_fn: Optional[Callable[[Any, Dict[str, Any]], Dict[str, float]]] = None,
-    optimizer_factory: Optional[Callable[[torch.nn.Module, TrainConfig], torch.optim.Optimizer]] = None,
-    callbacks: Optional[list[TrainingCallback]] = None,
-) -> Tuple[Path, TrainContract]:
+    train_cfg: dict[str, Any],
+    metrics_fn: Callable[[Any, dict[str, Any]], dict[str, float]] | None = None,
+    optimizer_factory: Callable[[torch.nn.Module, TrainConfig], torch.optim.Optimizer] | None = None,
+    callbacks: list[TrainingCallback] | None = None,
+) -> tuple[Path, TrainContract]:
     train_dir_path = Path(train_dir_path)
     train_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -81,15 +82,11 @@ def train_one_run(
         drop_last=False,
     )
 
-    opt = (
-        optimizer_factory(model, engine_cfg)
-        if optimizer_factory is not None
-        else torch.optim.AdamW(model.parameters(), lr=engine_cfg.lr)
-    )
+    opt = optimizer_factory(model, engine_cfg) if optimizer_factory is not None else torch.optim.AdamW(model.parameters(), lr=engine_cfg.lr)
 
-    best_metric_value: Optional[float] = None
-    best_epoch: Optional[int] = None
-    history: Dict[str, Any] = {}
+    best_metric_value: float | None = None
+    best_epoch: int | None = None
+    history: dict[str, Any] = {}
 
     model_path = train_dir_path / "model.pt"
     metrics_path = train_dir_path / "metrics.json"
@@ -130,7 +127,7 @@ def train_one_run(
         model.eval()
         val_loss_sum = 0.0
         n_val = 0
-        val_metric_sums: Dict[str, float] = {}
+        val_metric_sums: dict[str, float] = {}
 
         with torch.no_grad():
             for batch in val_loader:
@@ -144,16 +141,10 @@ def train_one_run(
                 if metrics_fn is not None:
                     batch_metrics = metrics_fn(outputs, batch)
                     for name, value in batch_metrics.items():
-                        val_metric_sums[name] = (
-                            val_metric_sums.get(name, 0.0)
-                            + float(value) * batch_size
-                        )
+                        val_metric_sums[name] = val_metric_sums.get(name, 0.0) + float(value) * batch_size
 
         val_loss = val_loss_sum / max(1, n_val)
-        val_metrics = {
-            name: total / max(1, n_val)
-            for name, total in val_metric_sums.items()
-        }
+        val_metrics = {name: total / max(1, n_val) for name, total in val_metric_sums.items()}
 
         epoch_metrics = {
             "train/loss": float(train_loss),
@@ -169,17 +160,11 @@ def train_one_run(
         history[f"epoch_{epoch}"] = epoch_metrics
 
         if engine_cfg.selection_metric not in epoch_metrics:
-            raise KeyError(
-                f"selection_metric={engine_cfg.selection_metric!r} not found. "
-                f"Available metrics: {sorted(epoch_metrics.keys())}"
-            )
+            raise KeyError(f"selection_metric={engine_cfg.selection_metric!r} not found. Available metrics: {sorted(epoch_metrics.keys())}")
 
         current_value = float(epoch_metrics[engine_cfg.selection_metric])
 
-        print(
-            f"[epoch {epoch}] "
-            + " ".join(f"{k}={v:.4f}" for k, v in epoch_metrics.items())
-        )
+        print(f"[epoch {epoch}] " + " ".join(f"{k}={v:.4f}" for k, v in epoch_metrics.items()))
 
         if _is_better(current_value, best_metric_value, engine_cfg.selection_mode):
             best_metric_value = current_value

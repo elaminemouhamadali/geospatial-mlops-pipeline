@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
-from geo_mlops.core.data.types import DiscoveredScene
+from typing import Any, Protocol
+
 import numpy as np
+
+from geo_mlops.core.data.types import DiscoveredScene
+
 
 @dataclass
 class SceneArrays:
@@ -12,15 +15,15 @@ class SceneArrays:
     W: int
     gsd_mpp: float
 
-    gt2d: Optional[np.ndarray]
-    pred2d: Optional[np.ndarray]
+    gt2d: np.ndarray | None
+    pred2d: np.ndarray | None
 
     # optional nodata mask derived from PAN masked array
-    pan_mask: Optional[np.ndarray] = None
+    pan_mask: np.ndarray | None = None
 
     # optional derived layers (adapter may populate)
-    target_gt: Optional[np.ndarray] = None
-    target_pred: Optional[np.ndarray] = None
+    target_gt: np.ndarray | None = None
+    target_pred: np.ndarray | None = None
 
 
 @dataclass(frozen=True)
@@ -48,7 +51,7 @@ class PresenceResult:
     """
 
     value: float
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -61,7 +64,7 @@ class DifficultyResult:
     """
 
     value: float
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 # -----------------------------
@@ -89,7 +92,7 @@ class TaskAdapter(Protocol):
     def require_nonempty_context_map(self) -> bool: ...
     def allow_missing_context_per_scene(self) -> bool: ...
 
-    def stems_to_process(self, *, pan_map: Dict[str, Path], gt_map: Dict[str, Path]) -> List[str]: ...
+    def stems_to_process(self, *, pan_map: dict[str, Path], gt_map: dict[str, Path]) -> list[str]: ...
 
     # -----------------------
     # Mask interpretation (optional)
@@ -105,7 +108,7 @@ class TaskAdapter(Protocol):
     # -----------------------
     # CSV task columns
     # -----------------------
-    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]: ...
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> dict[str, Any]: ...
 
 
 class TilingPolicy(Protocol):
@@ -114,7 +117,7 @@ class TilingPolicy(Protocol):
     Policies should be task-agnostic and rely on adapter.gt_presence / adapter.difficulty.
     """
 
-    def extra_row_fields(self) -> Dict[str, Any]: ...
+    def extra_row_fields(self) -> dict[str, Any]: ...
 
     def decide_include(
         self,
@@ -124,7 +127,7 @@ class TilingPolicy(Protocol):
         arr: SceneArrays,
         tw: TileWindow,
         sub_roi_pred_missing: bool,
-    ) -> tuple[bool, Dict[str, Any]]: ...
+    ) -> tuple[bool, dict[str, Any]]: ...
 
 
 # --------------------------------
@@ -164,7 +167,7 @@ class BaseAdapter:
     def allow_missing_context_per_scene(self) -> bool:
         return False
 
-    def stems_to_process(self, *, pan_map: Dict[str, Path], gt_map: Dict[str, Path]) -> List[str]:
+    def stems_to_process(self, *, pan_map: dict[str, Path], gt_map: dict[str, Path]) -> list[str]:
         return sorted(set(gt_map.keys()) or set(pan_map.keys()))
 
     # ---- derived layers (default assumes class-of-interest == 1) ----

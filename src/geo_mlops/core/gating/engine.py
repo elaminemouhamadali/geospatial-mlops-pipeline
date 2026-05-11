@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import operator
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Dict, Mapping
+from typing import Any
 
 from geo_mlops.core.contracts.gate_contract import GateContract
 from geo_mlops.core.io.gate_io import write_gate_contract
-
 
 _COMPARATORS = {
     ">=": operator.ge,
@@ -18,7 +18,7 @@ _COMPARATORS = {
 }
 
 
-def _metrics_for_gate(metrics: Mapping[str, Any]) -> Dict[str, Any]:
+def _metrics_for_gate(metrics: Mapping[str, Any]) -> dict[str, Any]:
     """
     Return the flat metric dict that gate checks should evaluate.
 
@@ -47,9 +47,7 @@ def _metrics_for_gate(metrics: Mapping[str, Any]) -> Dict[str, Any]:
         epoch_metrics = history.get(epoch_key)
 
         if not isinstance(epoch_metrics, Mapping):
-            raise ValueError(
-                f"metrics['history'] missing best epoch key {epoch_key!r}"
-            )
+            raise ValueError(f"metrics['history'] missing best epoch key {epoch_key!r}")
 
         out = dict(epoch_metrics)
 
@@ -77,16 +75,12 @@ def _metric_key(check: Mapping[str, Any]) -> str:
 
 def _get_metric(metrics: Mapping[str, Any], key: str) -> float:
     if key not in metrics:
-        raise KeyError(
-            f"Metric not found: {key!r}. Available metrics: {sorted(metrics.keys())}"
-        )
+        raise KeyError(f"Metric not found: {key!r}. Available metrics: {sorted(metrics.keys())}")
 
     value = metrics[key]
 
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise TypeError(
-            f"Metric {key!r} must be numeric, got {type(value).__name__}"
-        )
+        raise TypeError(f"Metric {key!r} must be numeric, got {type(value).__name__}")
 
     return float(value)
 
@@ -95,7 +89,7 @@ def _evaluate_check(
     *,
     metrics: Mapping[str, Any],
     check: Mapping[str, Any],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if "metric" not in check:
         raise ValueError(f"Gate check missing required field 'metric': {check}")
 
@@ -105,10 +99,7 @@ def _evaluate_check(
     comparator = str(check.get("comparator", ">="))
 
     if comparator not in _COMPARATORS:
-        raise ValueError(
-            f"Unsupported comparator {comparator!r}. "
-            f"Allowed: {sorted(_COMPARATORS.keys())}"
-        )
+        raise ValueError(f"Unsupported comparator {comparator!r}. Allowed: {sorted(_COMPARATORS.keys())}")
 
     key = _metric_key(check)
     actual = _get_metric(metrics, key)
@@ -125,7 +116,7 @@ def _evaluate_check(
     }
 
 
-def _summarize_checks(checks: list[Dict[str, Any]]) -> Dict[str, Any]:
+def _summarize_checks(checks: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(checks)
     passed = sum(1 for c in checks if c["passed"])
     failed = total - passed
@@ -163,10 +154,7 @@ def run_gate(
 
     gate_metrics = _metrics_for_gate(metrics)
 
-    checks = [
-        _evaluate_check(metrics=gate_metrics, check=check)
-        for check in checks_spec
-    ]
+    checks = [_evaluate_check(metrics=gate_metrics, check=check) for check in checks_spec]
 
     summary = _summarize_checks(checks)
 

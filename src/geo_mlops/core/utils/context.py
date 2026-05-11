@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
 
 import numpy as np
 import rasterio
@@ -14,9 +13,9 @@ from tqdm import tqdm
 @dataclass(frozen=True)
 class PanContextConfig:
     # If set, context size = scale * (H,W)
-    pan_context_scale: Optional[float] = 0.25
+    pan_context_scale: float | None = 0.25
     # Else, scale is chosen so max(H,W) <= max_side
-    pan_context_max_side: Optional[int] = 2048
+    pan_context_max_side: int | None = 2048
     # Used for normalization to uint8 (typical for reflectance-like PAN)
     pan_context_reflectance_max: int = 10_000
     # If False, skip when output already exists
@@ -27,7 +26,7 @@ class PanContextConfig:
     all_bands: bool = False  # for PAN we default to band 1 only
 
 
-def _decide_out_hw(H: int, W: int, cfg: PanContextConfig) -> Tuple[int, int, float]:
+def _decide_out_hw(H: int, W: int, cfg: PanContextConfig) -> tuple[int, int, float]:
     """
     Decide output (h, w) and scale_factor.
     """

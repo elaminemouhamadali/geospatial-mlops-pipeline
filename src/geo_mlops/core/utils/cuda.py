@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import Optional, Dict, Any
+
+from typing import Any
+
 import torch
 
 
-def _cuda_free_mem_bytes(device: torch.device) -> Optional[int]:
+def _cuda_free_mem_bytes(device: torch.device) -> int | None:
     """Return free CUDA bytes if available, else None."""
     if device.type != "cuda":
         return None
@@ -11,7 +13,7 @@ def _cuda_free_mem_bytes(device: torch.device) -> Optional[int]:
     return int(free_b)
 
 
-def _heuristic_initial_bs(free_bytes: Optional[int], max_bs: int) -> int:
+def _heuristic_initial_bs(free_bytes: int | None, max_bs: int) -> int:
     """
     Very simple heuristic based on free VRAM. If unknown, default to max_bs.
     Tuned for 512x512 tiles, AMP on. Adjusts conservatively.
@@ -27,6 +29,7 @@ def _heuristic_initial_bs(free_bytes: Optional[int], max_bs: int) -> int:
         return min(32, max_bs)
     return max_bs
 
+
 def _resolve_device(device_arg: str) -> torch.device:
     if device_arg == "cuda" and not torch.cuda.is_available():
         print("CUDA requested but unavailable; falling back to CPU.")
@@ -34,7 +37,7 @@ def _resolve_device(device_arg: str) -> torch.device:
     return torch.device(device_arg)
 
 
-def _infer_batch_size(batch: Dict[str, Any]) -> int:
+def _infer_batch_size(batch: dict[str, Any]) -> int:
     for value in batch.values():
         if torch.is_tensor(value):
             return int(value.shape[0])

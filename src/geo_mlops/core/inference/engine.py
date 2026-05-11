@@ -1,28 +1,29 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 import torch
 from tqdm import tqdm
 
 from geo_mlops.core.contracts.inference_contract import InferenceContract
+from geo_mlops.core.data.types import DiscoveredScene, SceneArrays
 from geo_mlops.core.inference.types import (
     InferenceConfig,
     InferencePrediction,
 )
-from geo_mlops.core.data.types import DiscoveredScene, SceneArrays
 from geo_mlops.core.io.inference_io import write_inference_contract
-from geo_mlops.core.utils.random import _seed_everything
-from geo_mlops.core.utils.windows import(
-    _ensure_bchw,
-    build_grid,
-    _pad_to_size,
-    _extract_context_window,
-    _squeeze_single_channel,
-)
 from geo_mlops.core.utils.dataclasses import _as_plain_dict
+from geo_mlops.core.utils.random import _seed_everything
+from geo_mlops.core.utils.windows import (
+    _ensure_bchw,
+    _extract_context_window,
+    _pad_to_size,
+    _squeeze_single_channel,
+    build_grid,
+)
 
 
 def process_inference_scenes(
@@ -49,7 +50,7 @@ def process_inference_scenes(
     model.to(device)
     model.eval()
 
-    prediction_rows: list[Dict[str, Any]] = []
+    prediction_rows: list[dict[str, Any]] = []
 
     with torch.no_grad():
         for scene in tqdm(scene_list, desc="Inference scenes"):
@@ -89,7 +90,6 @@ def process_inference_scenes(
     return prediction_rows, scene_list
 
 
-
 def run_full_scene_inference(
     *,
     task: str,
@@ -99,18 +99,18 @@ def run_full_scene_inference(
     inference_out_dir: Path,
     inference_cfg: InferenceConfig,
     load_scene_fn: Callable[[DiscoveredScene], SceneArrays],
-    forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
-    postprocess_fn: Callable[[Any, Dict[str, Any]], InferencePrediction],
+    forward_fn: Callable[[torch.nn.Module, dict[str, Any], torch.device], Any],
+    postprocess_fn: Callable[[Any, dict[str, Any]], InferencePrediction],
     save_prediction_fn: Callable[
         [DiscoveredScene, SceneArrays, InferencePrediction, Path, InferenceConfig],
         Any,
     ],
-    checkpoint_path: Optional[Path] = None,
-) -> Tuple[Path, InferenceContract]:
+    checkpoint_path: Path | None = None,
+) -> tuple[Path, InferenceContract]:
 
     inference_out_dir = Path(inference_out_dir)
     inference_out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     tables_dir = inference_out_dir / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
 
@@ -149,8 +149,8 @@ def predict_scene_sliding_window(
     arrays: SceneArrays,
     device: torch.device,
     cfg: InferenceConfig,
-    forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
-    postprocess_fn: Callable[[Any, Dict[str, Any]], InferencePrediction],
+    forward_fn: Callable[[torch.nn.Module, dict[str, Any], torch.device], Any],
+    postprocess_fn: Callable[[Any, dict[str, Any]], InferencePrediction],
 ) -> InferencePrediction:
     image = arrays.image
 
@@ -170,18 +170,16 @@ def predict_scene_sliding_window(
     context = arrays.context
     if context is not None:
         if not torch.is_tensor(context):
-            raise TypeError(
-                f"SceneArrays.context must be torch.Tensor if provided, got {type(context).__name__}"
-            )
+            raise TypeError(f"SceneArrays.context must be torch.Tensor if provided, got {type(context).__name__}")
         context = context.to(device)
 
-    prob_sum: Optional[torch.Tensor] = None
-    logits_sum: Optional[torch.Tensor] = None
-    weight_sum: Optional[torch.Tensor] = None
+    prob_sum: torch.Tensor | None = None
+    logits_sum: torch.Tensor | None = None
+    weight_sum: torch.Tensor | None = None
 
-    batch_tiles: List[torch.Tensor] = []
-    batch_contexts: List[torch.Tensor] = []
-    batch_windows: List[Tuple[int, int, int, int]] = []
+    batch_tiles: list[torch.Tensor] = []
+    batch_contexts: list[torch.Tensor] = []
+    batch_windows: list[tuple[int, int, int, int]] = []
 
     def flush_batch() -> None:
         nonlocal batch_tiles
@@ -196,7 +194,7 @@ def predict_scene_sliding_window(
 
         tile_tensor = torch.stack(batch_tiles, dim=0)
 
-        batch: Dict[str, Any] = {
+        batch: dict[str, Any] = {
             "tile_tensor": tile_tensor,
             "windows": batch_windows,
         }
@@ -211,16 +209,10 @@ def predict_scene_sliding_window(
         logits = _ensure_bchw(pred.logits).to(device=device, dtype=torch.float32)
 
         if prob.shape[0] != len(batch_windows):
-            raise ValueError(
-                f"postprocess_fn returned probability batch size {prob.shape[0]}, "
-                f"expected {len(batch_windows)}"
-            )
+            raise ValueError(f"postprocess_fn returned probability batch size {prob.shape[0]}, expected {len(batch_windows)}")
 
         if logits.shape[0] != len(batch_windows):
-            raise ValueError(
-                f"postprocess_fn returned logits batch size {logits.shape[0]}, "
-                f"expected {len(batch_windows)}"
-            )
+            raise ValueError(f"postprocess_fn returned logits batch size {logits.shape[0]}, expected {len(batch_windows)}")
 
         if prob_sum is None:
             out_channels = int(prob.shape[1])
@@ -303,4 +295,3 @@ def predict_scene_sliding_window(
         logits=logits_np,
         extra=None,
     )
-

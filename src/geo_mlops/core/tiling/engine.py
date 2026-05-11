@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import rasterio
 
+from geo_mlops.core.data.types import DiscoveredScene
 from geo_mlops.core.tiling.adapters.base import (
     SceneArrays,
     TaskAdapter,
     TileWindow,
     TilingPolicy,
 )
-from geo_mlops.core.data.types import DiscoveredScene
+from geo_mlops.core.utils.dataframes import _merge_stats
 from geo_mlops.core.utils.geospatial import gsd_from_epsg4326
 from geo_mlops.core.utils.scanning import gen_tiles_cover
-from geo_mlops.core.utils.dataframes import _merge_stats
 
 
 # -----------------------------------------
@@ -24,9 +24,9 @@ from geo_mlops.core.utils.dataframes import _merge_stats
 @dataclass(frozen=True)
 class TilingEngineConfig:
     # optional discovery inputs
-    preds_dirname: Optional[str]
-    context_dirname: Optional[str]
-    context_max_side_cap: Optional[int]
+    preds_dirname: str | None
+    context_dirname: str | None
+    context_max_side_cap: int | None
 
     # discovery
     pan_dirname: str
@@ -80,17 +80,17 @@ class RoiTilingEngine:
     # -----------------------------
     def tile_scenes(
         self,
-        scenes: List[DiscoveredScene],
+        scenes: list[DiscoveredScene],
         *,
         sub_roi_pred_missing: bool = False,
-    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """
         Tile a list of already-discovered scenes.
 
         Discovery belongs to dataset_scanner.py / scene_discovery.py.
         This method only performs scene -> tile rows.
         """
-        stats: Dict[str, Any] = dict(
+        stats: dict[str, Any] = dict(
             scenes_processed=0,
             scenes_skipped_no_pan=0,
             scenes_skipped_no_context=0,
@@ -101,7 +101,7 @@ class RoiTilingEngine:
             tiles_skipped_nodata=0,
         )
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
 
         for scene in scenes:
             scene_rows, scene_stats = self.tile_scene(
@@ -119,7 +119,7 @@ class RoiTilingEngine:
         scene: DiscoveredScene,
         *,
         sub_roi_pred_missing: bool = False,
-    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """
         Tile one already-discovered scene.
 
@@ -133,7 +133,7 @@ class RoiTilingEngine:
           - stem
           - scene_id
         """
-        stats: Dict[str, Any] = dict(
+        stats: dict[str, Any] = dict(
             scenes_processed=0,
             scenes_skipped_no_pan=0,
             scenes_skipped_no_context=0,
@@ -215,7 +215,7 @@ class RoiTilingEngine:
         th = tw = tile_px
         sh = sw = stride
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         stats["scenes_processed"] += 1
 
         tile_idx = 0
@@ -272,7 +272,7 @@ class RoiTilingEngine:
             cx = 0.5 * (win.x0 + win.x1)
             cy = 0.5 * (win.y0 + win.y1)
 
-            row: Dict[str, Any] = dict(
+            row: dict[str, Any] = dict(
                 roi=scene.region,
                 sub_roi=scene.subregion,
                 scene_id=scene.scene_id,

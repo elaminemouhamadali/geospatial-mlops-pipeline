@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,7 @@ class TileRecord:
 
     NOTE: Task-specific datasets should override `row_to_record()` if they need more fields.
     """
+
     scene_id: str
     image_src: Path
     x0: int
@@ -25,14 +27,14 @@ class TileRecord:
     y1: int
 
     # Optional common fields (may be empty / missing in some tasks)
-    gt_src: Optional[Path] = None
-    pred_src: Optional[Path] = None
-    context_src: Optional[Path] = None
+    gt_src: Path | None = None
+    pred_src: Path | None = None
+    context_src: Path | None = None
 
     # Optional metadata (not required for loading)
-    region: Optional[str] = None
-    subregion: Optional[str] = None
-    stem: Optional[str] = None
+    region: str | None = None
+    subregion: str | None = None
+    stem: str | None = None
 
 
 class BaseRasterTileDataset:
@@ -55,13 +57,13 @@ class BaseRasterTileDataset:
         self,
         *,
         tiles_df: pd.DataFrame,
-        indices: Optional[Sequence[int]] = None,
+        indices: Sequence[int] | None = None,
         cache_context: bool = True,
         context_cache_max_items: int = 256,
     ):
         self.df = tiles_df.reset_index(drop=True)
 
-        self._indices: Optional[np.ndarray]
+        self._indices: np.ndarray | None
         if indices is None:
             self._indices = None
         else:
@@ -69,7 +71,7 @@ class BaseRasterTileDataset:
 
         self.cache_context = bool(cache_context)
         self.context_cache_max_items = int(max(0, context_cache_max_items))
-        self._context_cache: Dict[str, np.ndarray] = {}
+        self._context_cache: dict[str, np.ndarray] = {}
 
         self._validate_required_columns()
 
@@ -77,7 +79,7 @@ class BaseRasterTileDataset:
     # Required columns contract
     # -------------------------
     @classmethod
-    def required_columns(cls) -> Tuple[str, ...]:
+    def required_columns(cls) -> tuple[str, ...]:
         """
         Minimum columns needed to read image windows. Task datasets typically add:
           - gt_src (for supervised training)
@@ -109,7 +111,8 @@ class BaseRasterTileDataset:
         """
         Convert a df row to a TileRecord. Subclasses may override to add fields.
         """
-        def _p(x: Any) -> Optional[Path]:
+
+        def _p(x: Any) -> Path | None:
             if x is None:
                 return None
             s = str(x)
@@ -140,8 +143,7 @@ class BaseRasterTileDataset:
         w = int(rec.x1 - rec.x0)
         h = int(rec.y1 - rec.y0)
         if w <= 0 or h <= 0:
-            raise ValueError(f"Invalid window for scene_id={rec.scene_id}: "
-                             f"(x0,y0,x1,y1)=({rec.x0},{rec.y0},{rec.x1},{rec.y1})")
+            raise ValueError(f"Invalid window for scene_id={rec.scene_id}: (x0,y0,x1,y1)=({rec.x0},{rec.y0},{rec.x1},{rec.y1})")
         return Window(col_off=int(rec.x0), row_off=int(rec.y0), width=w, height=h)
 
     @staticmethod
@@ -149,8 +151,8 @@ class BaseRasterTileDataset:
         raster_path: Path,
         window: Window,
         *,
-        band: Optional[int] = None,
-        out_dtype: Optional[np.dtype] = None,
+        band: int | None = None,
+        out_dtype: np.dtype | None = None,
     ) -> np.ndarray:
         """
         Read a raster window. Returns:
@@ -188,7 +190,7 @@ class BaseRasterTileDataset:
     # -------------------------
     # Context caching (optional)
     # -------------------------
-    def _ctx_cache_get(self, key: str) -> Optional[np.ndarray]:
+    def _ctx_cache_get(self, key: str) -> np.ndarray | None:
         if not self.cache_context:
             return None
         return self._context_cache.get(key)
@@ -233,7 +235,7 @@ class BaseRasterTileDataset:
     # -------------------------
     # Output contract
     # -------------------------
-    def build_sample(self, rec: TileRecord) -> Dict[str, Any]:
+    def build_sample(self, rec: TileRecord) -> dict[str, Any]:
         """
         Build a task-agnostic sample dict.
 
@@ -252,7 +254,7 @@ class BaseRasterTileDataset:
             "y1": rec.y1,
         }
 
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
+    def __getitem__(self, idx: int) -> dict[str, Any]:
         df_idx = self._resolve_df_index(idx)
         row = self.df.iloc[df_idx].to_dict()
         rec = self.row_to_record(row)

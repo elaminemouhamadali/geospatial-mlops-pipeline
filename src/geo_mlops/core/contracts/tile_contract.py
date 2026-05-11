@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 TILES_MANIFEST_NAME = "tiles_manifest.json"
 
@@ -14,12 +14,13 @@ class TilesContract:
     Canonical artifact is the master tile CSV.
     Per-subdir CSVs are cache artifacts and not required for the contract.
     """
+
     task: str
     tiles_dir_path: Path  # directory that contains master CSV + manifest
     master_csv_path: Path | str  # canonical CSV path
     datasets_root_path: Path
-    dataset_rois: List[str]
-    tile_engine_cfg: Dict[str, Any]  # TilingEngineConfig serialized to dict
-    adapter: Dict[str, str]  # {"module": "...", "name": "..."}
-    policy: Dict[str, str]  # {"module": "...", "name": "..."}
+    dataset_rois: list[str]
+    tile_engine_cfg: dict[str, Any]  # TilingEngineConfig serialized to dict
+    adapter: dict[str, str]  # {"module": "...", "name": "..."}
+    policy: dict[str, str]  # {"module": "...", "name": "..."}
     row_count: int

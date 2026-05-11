@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
 from geo_mlops.core.gating.stage import run_gate_stage
-from geo_mlops.core.io.gate_io import GATE_MANIFEST_NAME
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Run a gating stage against a metrics file."
-    )
+    p = argparse.ArgumentParser(description="Run a gating stage against a metrics file.")
 
     p.add_argument(
         "--task",
@@ -55,7 +52,7 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_argparser().parse_args(argv)
 
     manifest_path, contract = run_gate_stage(
@@ -68,15 +65,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     summary = contract.summary
 
-    print(
-        f"[gate] {contract.gate_name} | task={contract.task} | "
-        f"decision={contract.decision} | passed={contract.passed}"
-    )
-    print(
-        f"[gate] checks: total={summary.get('total_checks', len(contract.checks))} "
-        f"passed={summary.get('passed_checks', 0)} "
-        f"failed={summary.get('failed_checks', 0)}"
-    )
+    print(f"[gate] {contract.gate_name} | task={contract.task} | decision={contract.decision} | passed={contract.passed}")
+    print(f"[gate] checks: total={summary.get('total_checks', len(contract.checks))} passed={summary.get('passed_checks', 0)} failed={summary.get('failed_checks', 0)}")
     print(f"[gate] manifest={manifest_path}")
 
     if not contract.passed:

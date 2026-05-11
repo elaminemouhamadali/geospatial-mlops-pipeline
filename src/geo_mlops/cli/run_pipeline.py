@@ -1,29 +1,22 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
-from geo_mlops.core.utils.dataclasses import _load_json
-from geo_mlops.cli import evaluate, gate, register, split, tile, train, inference
-from geo_mlops.core.io.tile_io import TILES_MANIFEST_NAME
-from geo_mlops.core.io.split_io import SPLIT_MANIFEST_NAME
-from geo_mlops.core.io.train_io import TRAIN_MANIFEST_NAME, METRICS_MANIFEST_NAME
+from geo_mlops.cli import evaluate, gate, inference, register, split, tile, train
+from geo_mlops.core.io.eval_io import EVAL_MANIFEST_NAME
 from geo_mlops.core.io.gate_io import GATE_MANIFEST_NAME
 from geo_mlops.core.io.inference_io import INFERENCE_MANIFEST_NAME
-from geo_mlops.core.io.eval_io import EVAL_MANIFEST_NAME
+from geo_mlops.core.io.split_io import SPLIT_MANIFEST_NAME
+from geo_mlops.core.io.tile_io import TILES_MANIFEST_NAME
+from geo_mlops.core.io.train_io import METRICS_MANIFEST_NAME, TRAIN_MANIFEST_NAME
 from geo_mlops.core.registry.model_registry import REGISTRY_MANIFEST_NAME
-
+from geo_mlops.core.utils.dataclasses import _load_json
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description=(
-            "Run the full geospatial MLOps pipeline: "
-            "tiling -> split -> train -> gate A -> register candidate -> "
-            "golden evaluation -> gate B -> promote production."
-        )
-    )
+    p = argparse.ArgumentParser(description=("Run the full geospatial MLOps pipeline: tiling -> split -> train -> gate A -> register candidate -> golden evaluation -> gate B -> promote production."))
     p.add_argument("--task", type=str, required=True, help="Task key, e.g. building_seg.")
     p.add_argument(
         "--task-cfg-path",
@@ -106,7 +99,7 @@ def _run_stage(name: str, fn, argv: list[str]) -> None:
     print(f"[run_pipeline] DONE {name}")
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_argparser().parse_args(argv)
 
     run_dir_path = args.run_dir_path
@@ -114,13 +107,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     tiles_dir_path = run_dir_path / "tiles"
     split_dir_path = run_dir_path / "split"
-    train_dir_path = run_dir_path/ "train"
-    gate_a_dir_path = run_dir_path/ "gate_a"
-    registry_candidate_dir_path = run_dir_path/ "registry_candidate"
-    golden_inference_dir_path = run_dir_path/ "golden_inference"
-    golden_eval_dir_path = run_dir_path/ "golden_eval"
-    gate_b_dir_path = run_dir_path/ "gate_b"
-    registry_production_dir_path = run_dir_path/ "registry_production"
+    train_dir_path = run_dir_path / "train"
+    gate_a_dir_path = run_dir_path / "gate_a"
+    registry_candidate_dir_path = run_dir_path / "registry_candidate"
+    golden_inference_dir_path = run_dir_path / "golden_inference"
+    golden_eval_dir_path = run_dir_path / "golden_eval"
+    gate_b_dir_path = run_dir_path / "gate_b"
+    registry_production_dir_path = run_dir_path / "registry_production"
 
     tiles_manifest_path = tiles_dir_path / TILES_MANIFEST_NAME
     split_manifest_path = split_dir_path / SPLIT_MANIFEST_NAME
@@ -139,10 +132,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # -------------------------------------------------------------------------
     if not args.skip_tiling:
         tile_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--dataset-root-path", str(args.dataset_root_path),
-            "--tiles-dir-path", str(tiles_dir_path),
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--dataset-root-path",
+            str(args.dataset_root_path),
+            "--tiles-dir-path",
+            str(tiles_dir_path),
         ]
 
         if args.force_tiling:
@@ -159,10 +156,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # -------------------------------------------------------------------------
     if not args.skip_splitting:
         split_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--tiles-manifest-path", str(tiles_manifest_path),
-            "--split-dir-path", str(split_dir_path),
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--tiles-manifest-path",
+            str(tiles_manifest_path),
+            "--split-dir-path",
+            str(split_dir_path),
         ]
 
         _run_stage("split", split.main, split_argv)
@@ -174,12 +175,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # -------------------------------------------------------------------------
     if not args.skip_training:
         train_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--tiles-manifest-path", str(tiles_manifest_path),
-            "--split-manifest-path", str(split_manifest_path),
-            "--train-dir-path", str(train_dir_path),
-            "--device", args.device,
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--tiles-manifest-path",
+            str(tiles_manifest_path),
+            "--split-manifest-path",
+            str(split_manifest_path),
+            "--train-dir-path",
+            str(train_dir_path),
+            "--device",
+            args.device,
         ]
 
         if args.mlflow:
@@ -196,11 +203,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # -------------------------------------------------------------------------
     if not args.skip_gate_a:
         gate_a_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--gate-name", "gate_a",
-            "--metrics-file-path", str(train_metrics_path),
-            "--gate-dir-path", str(gate_a_dir_path),
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--gate-name",
+            "gate_a",
+            "--metrics-file-path",
+            str(train_metrics_path),
+            "--gate-dir-path",
+            str(gate_a_dir_path),
         ]
 
         _run_stage("gate_a", gate.main, gate_a_argv)
@@ -212,12 +224,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # -------------------------------------------------------------------------
     if not args.skip_register_candidate:
         register_candidate_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--action", "register-candidate",
-            "--gate-manifest-path", str(gate_a_manifest_path),
-            "--register-dir-path", str(registry_candidate_dir_path),
-            "--train-manifest-path", str(train_manifest_path),
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--action",
+            "register-candidate",
+            "--gate-manifest-path",
+            str(gate_a_manifest_path),
+            "--register-dir-path",
+            str(registry_candidate_dir_path),
+            "--train-manifest-path",
+            str(train_manifest_path),
         ]
 
         _run_stage("register_candidate", register.main, register_candidate_argv)
@@ -228,18 +246,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("[run_pipeline] stop requested after Gate A / candidate registration.")
         return 0
 
-
     # -------------------------------------------------------------------------
     # 6. Golden full-scene inference
     # -------------------------------------------------------------------------
     if not args.skip_inference:
         inference_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--dataset-root-path", str(args.golden_root_path),
-            "--train-manifest-path", str(train_manifest_path),
-            "--inference-dir-path", str(golden_inference_dir_path),
-            "--device", args.device,
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--dataset-root-path",
+            str(args.golden_root_path),
+            "--train-manifest-path",
+            str(train_manifest_path),
+            "--inference-dir-path",
+            str(golden_inference_dir_path),
+            "--device",
+            args.device,
         ]
 
         _run_stage("inference_golden", inference.main, inference_argv)
@@ -251,10 +274,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # -------------------------------------------------------------------------
     if not args.skip_evaluation:
         eval_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--inference-manifest-path", str(inference_manifest_path),
-            "--eval-dir-path", str(golden_eval_dir_path),
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--inference-manifest-path",
+            str(inference_manifest_path),
+            "--eval-dir-path",
+            str(golden_eval_dir_path),
         ]
 
         _run_stage("evaluate_golden", evaluate.main, eval_argv)
@@ -266,11 +293,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # -------------------------------------------------------------------------
     if not args.skip_gate_b:
         gate_b_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--gate-name", "gate_b",
-            "--metrics-file-path", str(eval_metrics_path),
-            "--gate-dir-path", str(gate_b_dir_path) ,
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--gate-name",
+            "gate_b",
+            "--metrics-file-path",
+            str(eval_metrics_path),
+            "--gate-dir-path",
+            str(gate_b_dir_path),
         ]
 
         _run_stage("gate_b", gate.main, gate_b_argv)
@@ -285,13 +317,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         model_version = str(candidate.get("model_version"))
 
         promote_argv = [
-            "--task", args.task,
-            "--task-cfg-path", str(args.task_cfg_path),
-            "--action", "promote-production",
-            "--gate-manifest-path", str(gate_b_manifest_path),
-            "--register-dir-path", str(registry_production_dir_path),
-            "--train-manifest-path", str(train_manifest_path),
-            "--model-version", model_version,
+            "--task",
+            args.task,
+            "--task-cfg-path",
+            str(args.task_cfg_path),
+            "--action",
+            "promote-production",
+            "--gate-manifest-path",
+            str(gate_b_manifest_path),
+            "--register-dir-path",
+            str(registry_production_dir_path),
+            "--train-manifest-path",
+            str(train_manifest_path),
+            "--model-version",
+            model_version,
         ]
 
         _run_stage("promote_production", register.main, promote_argv)

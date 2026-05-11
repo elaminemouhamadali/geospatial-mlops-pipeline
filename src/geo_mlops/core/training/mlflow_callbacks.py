@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import mlflow
 import mlflow.pytorch
@@ -15,9 +15,9 @@ class MLflowTrainingCallback(TrainingCallback):
         self,
         *,
         experiment_name: str,
-        run_name: Optional[str] = None,
-        tracking_uri: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
+        run_name: str | None = None,
+        tracking_uri: str | None = None,
+        tags: dict[str, str] | None = None,
         log_checkpoints: bool = True,
         log_model: bool = True,
         model_artifact_path: str = "model",
@@ -33,9 +33,9 @@ class MLflowTrainingCallback(TrainingCallback):
         self.log_system_metrics = log_system_metrics
 
         self._active = False
-        self.run_id: Optional[str] = None
-        self.run_name: Optional[str] = run_name
-        self.experiment_id: Optional[str] = None
+        self.run_id: str | None = None
+        self.run_name: str | None = run_name
+        self.experiment_id: str | None = None
 
     def on_train_start(
         self,
@@ -43,8 +43,8 @@ class MLflowTrainingCallback(TrainingCallback):
         model: torch.nn.Module,
         train_dir_path: Path,
         device: torch.device,
-        train_cfg: Dict[str, Any],
-        engine_cfg: Dict[str, Any],
+        train_cfg: dict[str, Any],
+        engine_cfg: dict[str, Any],
     ) -> None:
         if self.tracking_uri:
             mlflow.set_tracking_uri(self.tracking_uri)
@@ -74,7 +74,7 @@ class MLflowTrainingCallback(TrainingCallback):
         self,
         *,
         epoch: int,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
     ) -> None:
         mlflow.log_metrics(metrics, step=epoch)
 
@@ -118,7 +118,7 @@ class MLflowTrainingCallback(TrainingCallback):
                 mlflow.end_run()
                 self._active = False
 
-    def state_dict(self) -> Dict[str, Any]:
+    def state_dict(self) -> dict[str, Any]:
         return {
             "mlflow_run_id": self.run_id,
             "mlflow_run_name": self.run_name,
@@ -126,16 +126,12 @@ class MLflowTrainingCallback(TrainingCallback):
             "mlflow_experiment_id": self.experiment_id,
             "mlflow_tracking_uri": self.tracking_uri,
             "mlflow_model_artifact_path": self.model_artifact_path,
-            "mlflow_model_uri": (
-                f"runs:/{self.run_id}/{self.model_artifact_path}"
-                if self.run_id
-                else None
-            ),
+            "mlflow_model_uri": (f"runs:/{self.run_id}/{self.model_artifact_path}" if self.run_id else None),
         }
 
 
-def _flatten_dict(d: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
-    out: Dict[str, Any] = {}
+def _flatten_dict(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    out: dict[str, Any] = {}
 
     for k, v in d.items():
         key = f"{prefix}.{k}" if prefix else str(k)

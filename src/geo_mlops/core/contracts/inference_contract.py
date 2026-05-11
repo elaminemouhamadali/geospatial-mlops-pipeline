@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,6 @@ class InferenceContract:
 
     num_scenes: int
 
-    inference_cfg: Dict[str, Any]
+    inference_cfg: dict[str, Any]
 
     prediction_table_path: Path

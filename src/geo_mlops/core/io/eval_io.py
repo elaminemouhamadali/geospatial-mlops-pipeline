@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
+
 from geo_mlops.core.contracts.eval_contract import (
     EvalContract,
 )
+from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
+
 EVAL_MANIFEST_NAME = "eval_manifest.json"
 
 
@@ -25,13 +27,11 @@ def write_eval_contract(
     return manifest_path
 
 
-def load_eval_contract(
-    manifest_path: Path
-) -> EvalContract:
+def load_eval_contract(manifest_path: Path) -> EvalContract:
     """
     Load EvalContract from eval_dir/eval_manifest.json.
     """
-    
+
     data = _load_json(manifest_path)
 
     return EvalContract(
@@ -41,5 +41,5 @@ def load_eval_contract(
         eval_cfg=dict(data.get("eval_cfg")),
         metrics=dict(data.get("metrics")),
         artifacts=dict(data.get("artifacts")),
-        analytics=dict(data.get("analytics"))
+        analytics=dict(data.get("analytics")),
     )

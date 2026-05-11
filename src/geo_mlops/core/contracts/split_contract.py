@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 # -------------------------
@@ -15,15 +15,16 @@ class SplitContract:
     This is intentionally task-agnostic. Tasks may interpret the fields
     (e.g., water uses region lists to filter tiles), but core doesn't.
     """
+
     task: str
     split_dir_path: Path
 
-    train_regions: List[str]
-    val_regions: List[str]
+    train_regions: list[str]
+    val_regions: list[str]
 
-    split_cfg: Dict[str, List[Any]]
+    split_cfg: dict[str, list[Any]]
 
     # optional typed partitions (e.g., water uses val_with_water/val_no_water)
-    extra_partitions: Dict[str, List[str]]
+    extra_partitions: dict[str, list[str]]
 
-    artifacts: Dict[str, str]
+    artifacts: dict[str, str]

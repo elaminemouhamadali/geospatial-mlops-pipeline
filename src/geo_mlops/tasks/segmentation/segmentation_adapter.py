@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
+
+from geo_mlops.core.data.types import DiscoveredScene
 from geo_mlops.core.tiling.adapters.base import (
     BaseAdapter,
     DifficultyResult,
@@ -11,7 +13,6 @@ from geo_mlops.core.tiling.adapters.base import (
     SceneArrays,
     TileWindow,
 )
-from geo_mlops.core.data.types import DiscoveredScene
 
 
 @dataclass
@@ -151,7 +152,7 @@ class SegmentationAdapter(BaseAdapter):
     # -----------------------------
     # Task-specific CSV columns
     # -----------------------------
-    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> dict[str, Any]:
         """
         Base class does not impose any task columns.
         Concrete task adapters should override this.
@@ -160,6 +161,4 @@ class SegmentationAdapter(BaseAdapter):
           pres = self.gt_presence(...)
           return {"water_ratio": pres.value}
         """
-        raise NotImplementedError(
-            "SegmentationAdapter is a helper base. Create a concrete task adapter and implement build_task_row()."
-        )
+        raise NotImplementedError("SegmentationAdapter is a helper base. Create a concrete task adapter and implement build_task_row().")

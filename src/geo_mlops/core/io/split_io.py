@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
-from geo_mlops.core.utils.dataclasses import (
-    _as_plain_dict, 
-    _load_json,
-    _to_jsonable,
-    _unique_group_values
-)
+from typing import Any
+
 from geo_mlops.core.contracts.split_contract import SplitContract
 from geo_mlops.core.splitting.split import SplitConfig, SplitResult
+from geo_mlops.core.utils.dataclasses import (
+    _as_plain_dict,
+    _load_json,
+    _to_jsonable,
+    _unique_group_values,
+)
 
 SPLIT_MANIFEST_NAME = "split.json"
 
@@ -21,7 +22,7 @@ def load_split_contract(manifest_path: Path) -> SplitContract:
     Canonical source is `split.json`
     """
 
-    data: Dict[str, Any] = _load_json(manifest_path)
+    data: dict[str, Any] = _load_json(manifest_path)
 
     return SplitContract(
         task=data["task"],
@@ -29,10 +30,7 @@ def load_split_contract(manifest_path: Path) -> SplitContract:
         train_regions=list(data.get("train_regions", [])),
         val_regions=list(data.get("val_regions", [])),
         split_cfg=dict(data.get("split_cfg", {})),
-        extra_partitions={
-            str(k): list(map(str, v))
-            for k, v in dict(data.get("extra_partitions", {})).items()
-        },
+        extra_partitions={str(k): list(map(str, v)) for k, v in dict(data.get("extra_partitions", {})).items()},
         artifacts=dict(data.get("artifacts", {})),
     )
 
@@ -80,6 +78,7 @@ def write_split_artifacts(
     artifacts["group_stats_path"] = str(group_stats_path)
 
     return artifacts
+
 
 def build_split_contract(
     *,

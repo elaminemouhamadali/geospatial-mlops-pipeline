@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
 
-def load_cfg(path: str | Path) -> Dict[str, Any]:
+def load_cfg(path: str | Path) -> dict[str, Any]:
     """
     Load a task configuration from YAML or JSON.
 
@@ -34,7 +34,7 @@ def load_cfg(path: str | Path) -> Dict[str, Any]:
     raise ValueError(f"Unsupported config extension '{suffix}'. Use .yaml/.yml or .json.")
 
 
-def require_section(cfg: Dict[str, Any], section: str) -> Dict[str, Any]:
+def require_section(cfg: dict[str, Any], section: str) -> dict[str, Any]:
     value = cfg.get(section)
     if not isinstance(value, dict):
         raise ValueError(f"Task config must include a '{section}' mapping.")

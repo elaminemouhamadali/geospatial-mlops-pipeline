@@ -1,5 +1,5 @@
-from pyproj import Geod
 import rasterio
+from pyproj import Geod
 
 
 def compute_gsd_from_gcps(gcps) -> float:
@@ -30,15 +30,9 @@ def gsd_from_epsg4326(path):
         center_lat = (src.bounds.top + src.bounds.bottom) / 2
 
         # meters per pixel (longitude varies with latitude)
-        _, _, meters_x = geod.inv(
-            0, center_lat,
-            deg_x, center_lat
-        )
+        _, _, meters_x = geod.inv(0, center_lat, deg_x, center_lat)
 
         # latitude spacing
-        _, _, meters_y = geod.inv(
-            0, center_lat,
-            0, center_lat + deg_y
-        )
+        _, _, meters_y = geod.inv(0, center_lat, 0, center_lat + deg_y)
 
         return float((abs(meters_x) + abs(meters_y)) / 2)

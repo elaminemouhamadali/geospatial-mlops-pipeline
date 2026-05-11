@@ -1,26 +1,39 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
+from geo_mlops.core.data.scene_discovery import discover_dataset_scenes
 from geo_mlops.core.io.train_io import load_train_contract
 from geo_mlops.core.registry.task_registry import get_task
-from geo_mlops.core.data.scene_discovery import discover_dataset_scenes
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description=(
-            "Run full-scene sliding-window inference on a golden dataset using "
-            "a trained task model."
-        )
-    )
+    p = argparse.ArgumentParser(description=("Run full-scene sliding-window inference on a golden dataset using a trained task model."))
     p.add_argument("--task", type=str, required=True)
     p.add_argument("--task-cfg-path", "--task_cfg_path", dest="task_cfg_path", type=Path, required=True)
-    p.add_argument("--dataset-root-path", "--dataset_root_path", dest="dataset_root_path", type=Path, required=True)
-    p.add_argument("--train-manifest-path", "--train_manifest_path", dest="train_manifest_path", type=Path, required=True)
-    p.add_argument("--inference-dir-path", "--inference_dir_path", dest="inference_dir_path", type=Path, required=True)
+    p.add_argument(
+        "--dataset-root-path",
+        "--dataset_root_path",
+        dest="dataset_root_path",
+        type=Path,
+        required=True,
+    )
+    p.add_argument(
+        "--train-manifest-path",
+        "--train_manifest_path",
+        dest="train_manifest_path",
+        type=Path,
+        required=True,
+    )
+    p.add_argument(
+        "--inference-dir-path",
+        "--inference_dir_path",
+        dest="inference_dir_path",
+        type=Path,
+        required=True,
+    )
 
     p.add_argument("--device", type=str, default="cuda")
     p.add_argument("--execution-backend", choices=["local", "ray"], default="local")
@@ -34,7 +47,7 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_argparser().parse_args(argv)
     args.inference_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -93,8 +106,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             shutdown_ray_backend(ray_cfg)
 
     else:
-        from geo_mlops.core.utils.cuda import _resolve_device
         from geo_mlops.core.inference.engine import run_full_scene_inference
+        from geo_mlops.core.utils.cuda import _resolve_device
 
         device = _resolve_device(args.device)
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -21,13 +22,13 @@ def run_prediction_evaluation_ray(
     task: str,
     prediction_table_path: Path,
     out_dir: Path,
-    eval_cfg: EvalConfig | Dict[str, Any],
-    build_metric_accumulator_fn: Callable[[Dict[str, Any]], Any],
-    build_prediction_evaluator_fn: Callable[[Dict[str, Any], Any], Callable[[Dict[str, Any]], Dict[str, Any]]],
-    num_workers: Optional[int] = None,
-    items_per_shard: Optional[int] = None,
+    eval_cfg: EvalConfig | dict[str, Any],
+    build_metric_accumulator_fn: Callable[[dict[str, Any]], Any],
+    build_prediction_evaluator_fn: Callable[[dict[str, Any], Any], Callable[[dict[str, Any]], dict[str, Any]]],
+    num_workers: int | None = None,
+    items_per_shard: int | None = None,
     num_cpus_per_worker: int = 4,
-) -> Tuple[Path, EvalContract]:
+) -> tuple[Path, EvalContract]:
     """
     Distributed prediction scoring.
 
@@ -116,10 +117,7 @@ def run_prediction_evaluation_ray(
     metric_accumulator = build_metric_accumulator_fn(eval_cfg_dict)
 
     if not hasattr(metric_accumulator, "ingest_rows"):
-        raise AttributeError(
-            "Distributed evaluation requires the metric accumulator to implement "
-            "ingest_rows(rows: list[dict[str, Any]])."
-        )
+        raise AttributeError("Distributed evaluation requires the metric accumulator to implement ingest_rows(rows: list[dict[str, Any]]).")
 
     metric_accumulator.ingest_rows(per_scene_rows)
 
@@ -149,7 +147,7 @@ def run_prediction_evaluation_ray(
             "per_scene_metrics_csv": str(per_scene_table_path),
             **artifacts,
         },
-        analytics=analytics
+        analytics=analytics,
     )
 
     manifest_path = write_eval_contract(contract)
@@ -162,8 +160,8 @@ def _run_evaluation_shard(
     shard_idx: int,
     records: list[dict[str, Any]],
     eval_cfg: dict[str, Any],
-    build_metric_accumulator_fn: Callable[[Dict[str, Any]], Any],
-    build_prediction_evaluator_fn: Callable[[Dict[str, Any], Any], Callable[[Dict[str, Any]], Dict[str, Any]]],
+    build_metric_accumulator_fn: Callable[[dict[str, Any]], Any],
+    build_prediction_evaluator_fn: Callable[[dict[str, Any], Any], Callable[[dict[str, Any]], dict[str, Any]]],
     shard_dir: Path,
 ) -> str:
     """

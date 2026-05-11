@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -11,14 +12,14 @@ import torch
 # -----------------------------------------------------------------------------
 # Training-time validation metrics
 # -----------------------------------------------------------------------------
-def build_metrics_fn(train_cfg: Dict[str, Any]):
+def build_metrics_fn(train_cfg: dict[str, Any]):
     metrics_cfg = train_cfg.get("metrics", {}) or {}
 
     threshold = float(metrics_cfg.get("threshold", 0.5))
     foreground_label = int(metrics_cfg.get("foreground_label", 1))
     eps = float(metrics_cfg.get("eps", 1e-7))
 
-    def metrics_fn(outputs: torch.Tensor, batch: Dict[str, Any]) -> Dict[str, float]:
+    def metrics_fn(outputs: torch.Tensor, batch: dict[str, Any]) -> dict[str, float]:
         """
         Lightweight binary segmentation metrics for training-time validation.
 
@@ -29,9 +30,7 @@ def build_metrics_fn(train_cfg: Dict[str, Any]):
             raise KeyError("Building metrics expects batch['mask'].")
 
         if outputs.ndim != 4 or outputs.shape[1] != 1:
-            raise ValueError(
-                f"Building metrics expect outputs shaped [B,1,H,W], got {tuple(outputs.shape)}."
-            )
+            raise ValueError(f"Building metrics expect outputs shaped [B,1,H,W], got {tuple(outputs.shape)}.")
 
         mask = batch["mask"].to(outputs.device)
         target = mask == foreground_label
@@ -68,15 +67,15 @@ class BuildingSegmentationEvalAccumulator:
     File loading belongs outside this class.
     """
 
-    def __init__(self, metrics_cfg: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, metrics_cfg: dict[str, Any] | None = None) -> None:
         metrics_cfg = metrics_cfg or {}
 
         self.eps = float(metrics_cfg.get("eps", 1e-7))
         self.pareto_top_k = int(metrics_cfg.get("pareto_top_k", 50))
 
-        self.global_counts: Dict[str, int] = _empty_counts()
-        self.rows: List[Dict[str, Any]] = []
-        self.warnings: List[str] = []
+        self.global_counts: dict[str, int] = _empty_counts()
+        self.rows: list[dict[str, Any]] = []
+        self.warnings: list[str] = []
 
     def update_from_arrays(
         self,
@@ -88,7 +87,7 @@ class BuildingSegmentationEvalAccumulator:
         probability: np.ndarray,
         mask: np.ndarray,
         metadata: Mapping[str, Any] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         metadata = metadata or {}
 
         target_bool = _to_numpy_bool(target)
@@ -99,16 +98,10 @@ class BuildingSegmentationEvalAccumulator:
             prob = prob[0]
 
         if pred_bool.shape != target_bool.shape:
-            raise ValueError(
-                f"Prediction/target shape mismatch for scene={scene_id!r}: "
-                f"pred={pred_bool.shape}, target={target_bool.shape}"
-            )
+            raise ValueError(f"Prediction/target shape mismatch for scene={scene_id!r}: pred={pred_bool.shape}, target={target_bool.shape}")
 
         if prob.shape != target_bool.shape:
-            raise ValueError(
-                f"Probability/target shape mismatch for scene={scene_id!r}: "
-                f"prob={prob.shape}, target={target_bool.shape}"
-            )
+            raise ValueError(f"Probability/target shape mismatch for scene={scene_id!r}: prob={prob.shape}, target={target_bool.shape}")
 
         counts = _numpy_binary_counts(pred=pred_bool, target=target_bool)
         self.global_counts = _add_counts(self.global_counts, counts)
@@ -116,7 +109,7 @@ class BuildingSegmentationEvalAccumulator:
         metrics = _metrics_from_counts(counts, eps=self.eps)
         prob_stats = _probability_stats(prob)
 
-        row: Dict[str, Any] = {
+        row: dict[str, Any] = {
             "scene_id": scene_id,
             "roi": roi,
             "sub_roi": sub_roi,
@@ -138,7 +131,7 @@ class BuildingSegmentationEvalAccumulator:
 
         self.rows.append(row)
         return row
-    
+
     def ingest_rows(self, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             counts = {
@@ -150,7 +143,7 @@ class BuildingSegmentationEvalAccumulator:
             self.global_counts = _add_counts(self.global_counts, counts)
             self.rows.append(dict(row))
 
-    def finalize(self, *, out_dir: Path) -> Dict[str, Any]:
+    def finalize(self, *, out_dir: Path) -> dict[str, Any]:
         out_dir = Path(out_dir)
         tables_dir = out_dir / "tables"
         tables_dir.mkdir(parents=True, exist_ok=True)
@@ -172,7 +165,7 @@ class BuildingSegmentationEvalAccumulator:
         scene_macro = self._macro_metrics(df)
         roi_macro = self._macro_metrics(roi_df)
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             **{f"micro/{name}": float(value) for name, value in micro.items()},
             **{f"scene_macro/{name}": float(value) for name, value in scene_macro.items()},
             **{f"roi_macro/{name}": float(value) for name, value in roi_macro.items()},
@@ -195,7 +188,7 @@ class BuildingSegmentationEvalAccumulator:
             "analytics": analytics,
         }
 
-    def _macro_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
+    def _macro_metrics(self, df: pd.DataFrame) -> dict[str, float]:
         if df.empty:
             return {}
 
@@ -210,7 +203,7 @@ class BuildingSegmentationEvalAccumulator:
             "pixel_accuracy",
         ]
 
-        out: Dict[str, float] = {}
+        out: dict[str, float] = {}
 
         for col in metric_cols:
             if col in df.columns:
@@ -230,7 +223,7 @@ class BuildingSegmentationEvalAccumulator:
         if df.empty or "roi" not in df.columns:
             return pd.DataFrame()
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
 
         for roi, g in df.groupby("roi"):
             counts = {
@@ -270,24 +263,16 @@ class BuildingSegmentationEvalAccumulator:
             return df
 
         if "f1" in df.columns:
-            df["rank_low_f1"] = pd.to_numeric(
-                df["f1"], errors="coerce"
-            ).rank(method="min", ascending=True)
+            df["rank_low_f1"] = pd.to_numeric(df["f1"], errors="coerce").rank(method="min", ascending=True)
 
         if "iou" in df.columns:
-            df["rank_low_iou"] = pd.to_numeric(
-                df["iou"], errors="coerce"
-            ).rank(method="min", ascending=True)
+            df["rank_low_iou"] = pd.to_numeric(df["iou"], errors="coerce").rank(method="min", ascending=True)
 
         if "false_positive_pixels" in df.columns:
-            df["rank_high_fp"] = pd.to_numeric(
-                df["false_positive_pixels"], errors="coerce"
-            ).rank(method="min", ascending=False)
+            df["rank_high_fp"] = pd.to_numeric(df["false_positive_pixels"], errors="coerce").rank(method="min", ascending=False)
 
         if "false_negative_pixels" in df.columns:
-            df["rank_high_fn"] = pd.to_numeric(
-                df["false_negative_pixels"], errors="coerce"
-            ).rank(method="min", ascending=False)
+            df["rank_high_fn"] = pd.to_numeric(df["false_negative_pixels"], errors="coerce").rank(method="min", ascending=False)
 
         rank_cols = [c for c in df.columns if c.startswith("rank_")]
 
@@ -298,7 +283,7 @@ class BuildingSegmentationEvalAccumulator:
         return df.head(self.pareto_top_k)
 
 
-def _empty_counts() -> Dict[str, int]:
+def _empty_counts() -> dict[str, int]:
     return {
         "tp": 0,
         "fp": 0,
@@ -307,7 +292,7 @@ def _empty_counts() -> Dict[str, int]:
     }
 
 
-def _add_counts(a: Mapping[str, int], b: Mapping[str, int]) -> Dict[str, int]:
+def _add_counts(a: Mapping[str, int], b: Mapping[str, int]) -> dict[str, int]:
     return {
         "tp": int(a.get("tp", 0)) + int(b.get("tp", 0)),
         "fp": int(a.get("fp", 0)) + int(b.get("fp", 0)),
@@ -320,7 +305,7 @@ def _numpy_binary_counts(
     *,
     pred: np.ndarray,
     target: np.ndarray,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     pred = pred.astype(bool)
     target = target.astype(bool)
 
@@ -336,7 +321,7 @@ def _metrics_from_counts(
     counts: Mapping[str, int],
     *,
     eps: float = 1e-7,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     tp = float(counts.get("tp", 0))
     fp = float(counts.get("fp", 0))
     fn = float(counts.get("fn", 0))
@@ -369,7 +354,7 @@ def _to_numpy_bool(x: Any) -> np.ndarray:
     return arr.astype(bool)
 
 
-def _probability_stats(probability: Any) -> Dict[str, float]:
+def _probability_stats(probability: Any) -> dict[str, float]:
     if probability is None:
         return {}
 
@@ -395,7 +380,7 @@ def _torch_binary_counts(
     *,
     pred: torch.Tensor,
     target: torch.Tensor,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     pred = pred.bool()
     target = target.bool()
 

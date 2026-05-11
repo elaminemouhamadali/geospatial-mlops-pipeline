@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Dict, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
+
 
 @dataclass(frozen=True)
 class EvalConfig:
@@ -38,7 +40,7 @@ class EvalMetricAccumulator(Protocol):
         target: Any,
         prediction: Any,
         metadata: Mapping[str, Any] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update internal metric state from one already-loaded prediction item.
 
@@ -53,7 +55,7 @@ class EvalMetricAccumulator(Protocol):
         """
         ...
 
-    def finalize(self, *, out_dir: Path) -> Dict[str, Any]:
+    def finalize(self, *, out_dir: Path) -> dict[str, Any]:
         """
         Finalize metrics and optional analytics.
 

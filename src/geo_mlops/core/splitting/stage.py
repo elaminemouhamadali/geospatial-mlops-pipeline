@@ -4,14 +4,14 @@ from pathlib import Path
 
 from geo_mlops.core.contracts.split_contract import SplitContract
 from geo_mlops.core.io.split_io import (
-    write_split_contract,
-    write_split_artifacts,
     build_split_contract,
+    write_split_artifacts,
+    write_split_contract,
 )
 from geo_mlops.core.io.tile_io import load_tiles_contract
 from geo_mlops.core.splitting.split import (
-    make_splits_from_csvs,
     SplitConfig,
+    make_splits_from_csvs,
 )
 
 
@@ -23,7 +23,7 @@ def run_split_stage(
     tiles_manifest_path: Path,
     split_dir_path: Path,
 ) -> tuple[Path, SplitContract]:
-    
+
     split_dir_path = Path(split_dir_path)
     split_dir_path.mkdir(parents=True, exist_ok=True)
 

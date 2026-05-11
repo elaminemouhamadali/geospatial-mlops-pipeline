@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -21,8 +21,8 @@ class EvalContract:
 
     metrics_path: Path
 
-    eval_cfg: Dict[str, Any]
+    eval_cfg: dict[str, Any]
 
-    metrics: Dict[str, float]
-    artifacts: Dict[str, Any]
-    analytics: Dict[str, Any]
+    metrics: dict[str, float]
+    artifacts: dict[str, Any]
+    analytics: dict[str, Any]

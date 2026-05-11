@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -32,7 +32,7 @@ class BuildingDatasetConfig:
     aug_noise_std: float = 0.0
 
     @classmethod
-    def from_dict(cls, cfg: Dict[str, Any] | None) -> "BuildingDatasetConfig":
+    def from_dict(cls, cfg: dict[str, Any] | None) -> BuildingDatasetConfig:
         cfg = cfg or {}
         return cls(
             reflectance_max=float(cfg.get("reflectance_max", cls.reflectance_max)),
@@ -70,12 +70,12 @@ class BuildingDataset(BaseRasterTileDataset):
         self,
         *,
         tiles_df: pd.DataFrame,
-        indices: Optional[Sequence[int]] = None,
+        indices: Sequence[int] | None = None,
         cfg: BuildingDatasetConfig = BuildingDatasetConfig(),
         cache_context: bool = True,
         context_cache_max_items: int = 256,
-        tile_transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
-        context_transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
+        tile_transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        context_transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
     ) -> None:
         self.cfg = cfg
         self.tile_transform = tile_transform
@@ -89,7 +89,7 @@ class BuildingDataset(BaseRasterTileDataset):
         )
 
     @classmethod
-    def required_columns(cls) -> Tuple[str, ...]:
+    def required_columns(cls) -> tuple[str, ...]:
         return ("scene_id", "image_src", "gt_src", "x0", "y0", "x1", "y1")
 
     def _pan_window_float01(self, rec: TileRecord) -> np.ndarray:
@@ -136,11 +136,9 @@ class BuildingDataset(BaseRasterTileDataset):
         )
         return ctx.squeeze(0)
 
-    def build_sample(self, rec: TileRecord) -> Dict[str, Any]:
+    def build_sample(self, rec: TileRecord) -> dict[str, Any]:
         if self.cfg.use_context and rec.context_src is None:
-            raise ValueError(
-                f"context_src missing but use_context=True for scene_id={rec.scene_id}"
-            )
+            raise ValueError(f"context_src missing but use_context=True for scene_id={rec.scene_id}")
 
         pan_hw = self._pan_window_float01(rec)
         gt_hw = self._gt_window_int(rec)
@@ -153,7 +151,7 @@ class BuildingDataset(BaseRasterTileDataset):
         if self.tile_transform is not None:
             tile_t = self.tile_transform(tile_t)
 
-        ctx_t: Optional[torch.Tensor] = None
+        ctx_t: torch.Tensor | None = None
 
         if self.cfg.use_context:
             ctx_t = self._context_float01(rec)
@@ -176,7 +174,7 @@ class BuildingDataset(BaseRasterTileDataset):
                 noise = torch.randn_like(tile_t) * float(self.cfg.aug_noise_std)
                 tile_t = torch.clamp(tile_t + noise, 0.0, 1.0)
 
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "tile_tensor": tile_t.contiguous(),
             "mask": mask_t.long().contiguous(),
             "meta": self._build_meta(rec),
@@ -188,7 +186,7 @@ class BuildingDataset(BaseRasterTileDataset):
         return out
 
     @staticmethod
-    def _build_meta(rec: TileRecord) -> Dict[str, Any]:
+    def _build_meta(rec: TileRecord) -> dict[str, Any]:
         return {
             "scene_id": rec.scene_id,
             "image_src": str(rec.image_src),
@@ -205,10 +203,10 @@ class BuildingDataset(BaseRasterTileDataset):
         *,
         tile_t: torch.Tensor,
         mask_t: torch.Tensor,
-        ctx_t: Optional[torch.Tensor],
+        ctx_t: torch.Tensor | None,
         aug_flip: bool,
         aug_rot90: bool,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
         if aug_flip:
             if np.random.rand() < 0.5:
                 tile_t = torch.flip(tile_t, dims=[2])
@@ -231,4 +229,3 @@ class BuildingDataset(BaseRasterTileDataset):
                     ctx_t = torch.rot90(ctx_t, k, dims=[1, 2])
 
         return tile_t, mask_t, ctx_t
-    

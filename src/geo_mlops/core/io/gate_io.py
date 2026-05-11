@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
 from pathlib import Path
 
 from geo_mlops.core.contracts.gate_contract import GateContract
+from geo_mlops.core.utils.dataclasses import _as_plain_dict, _load_json, _to_jsonable
 
 GATE_MANIFEST_NAME = "gate_decision.json"
 
@@ -25,9 +25,7 @@ def write_gate_contract(
     return manifest_path
 
 
-def load_gate_contract(
-    manifest_path
-) -> GateContract:
+def load_gate_contract(manifest_path) -> GateContract:
     """
     Load GateContract from gate_dir/gate_decision.json.
     """

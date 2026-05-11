@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import ray
 
@@ -27,11 +27,11 @@ class RayBackendConfig:
           training/evaluation jobs, but possible later for interactive use.
     """
 
-    address: Optional[str] = "auto"
+    address: str | None = "auto"
     namespace: str = "geo-mlops"
     ignore_reinit_error: bool = True
     log_cluster_resources: bool = True
-    runtime_env: Optional[dict[str, Any]] = None
+    runtime_env: dict[str, Any] | None = None
     shutdown_on_exit: bool = False
 
 
@@ -86,10 +86,7 @@ def require_ray_initialized() -> None:
     """
 
     if not ray.is_initialized():
-        raise RuntimeError(
-            "Ray is not initialized. Call init_ray_backend(...) before using "
-            "Ray execution utilities."
-        )
+        raise RuntimeError("Ray is not initialized. Call init_ray_backend(...) before using Ray execution utilities.")
 
 
 def get_ray_cluster_resources() -> dict[str, Any]:

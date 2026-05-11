@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+
 from geo_mlops.core.contracts.tile_contract import (
     TilesContract,
 )
 from geo_mlops.core.io.tile_io import write_tiles_contract, write_tiles_master_csv
 from geo_mlops.core.tiling.adapters.base import TaskAdapter, TilingPolicy
-from geo_mlops.core.tiling.engine import TilingEngineConfig, RoiTilingEngine
-from geo_mlops.core.utils.dataclasses import _as_plain_dict
 from geo_mlops.core.tiling.dataset_scanner import scan_full_dataset
-
+from geo_mlops.core.tiling.engine import RoiTilingEngine, TilingEngineConfig
+from geo_mlops.core.utils.dataclasses import _as_plain_dict
 
 
 def run_tiling_stage(
@@ -23,7 +22,7 @@ def run_tiling_stage(
     policy: TilingPolicy,
     force: bool = False,
     verbose: bool = False,
-) -> Tuple[Path, TilesContract]:
+) -> tuple[Path, TilesContract]:
 
     tiles_dir_path = Path(tiles_dir_path)
     tiles_dir_path.mkdir(parents=True, exist_ok=True)

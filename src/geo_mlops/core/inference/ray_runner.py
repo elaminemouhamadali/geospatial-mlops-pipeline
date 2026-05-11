@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 import torch
@@ -26,20 +27,20 @@ def run_full_scene_inference_ray(
     inference_cfg: InferenceConfig,
     model_factory_fn: Callable[[], torch.nn.Module],
     load_checkpoint_fn: Callable[..., torch.nn.Module],
-    checkpoint_path: Optional[Path],
+    checkpoint_path: Path | None,
     device: str,
     load_scene_fn: Callable[[DiscoveredScene], SceneArrays],
-    forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
-    postprocess_fn: Callable[[Any, Dict[str, Any]], InferencePrediction],
+    forward_fn: Callable[[torch.nn.Module, dict[str, Any], torch.device], Any],
+    postprocess_fn: Callable[[Any, dict[str, Any]], InferencePrediction],
     save_prediction_fn: Callable[
         [DiscoveredScene, SceneArrays, InferencePrediction, Path, InferenceConfig],
         Any,
     ],
-    num_workers: Optional[int] = None,
-    items_per_shard: Optional[int] = None,
+    num_workers: int | None = None,
+    items_per_shard: int | None = None,
     num_cpus_per_worker: int = 4,
     num_gpus_per_worker: float = 1.0,
-) -> Tuple[Path, InferenceContract]:
+) -> tuple[Path, InferenceContract]:
     """
     Distributed full-scene inference.
 
@@ -115,11 +116,7 @@ def run_full_scene_inference_ray(
             if not df.empty:
                 dfs.append(df)
 
-    prediction_df = (
-        pd.concat(dfs, ignore_index=True)
-        if dfs
-        else pd.DataFrame()
-    )
+    prediction_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
     prediction_table_path = tables_dir / "prediction_inventory.csv"
     prediction_df.to_csv(prediction_table_path, index=False)
@@ -146,11 +143,11 @@ def _run_inference_shard(
     inference_cfg: InferenceConfig,
     model_factory_fn: Callable[[], torch.nn.Module],
     load_checkpoint_fn: Callable[..., torch.nn.Module],
-    checkpoint_path: Optional[Path],
+    checkpoint_path: Path | None,
     device: str,
     load_scene_fn: Callable[[DiscoveredScene], SceneArrays],
-    forward_fn: Callable[[torch.nn.Module, Dict[str, Any], torch.device], Any],
-    postprocess_fn: Callable[[Any, Dict[str, Any]], InferencePrediction],
+    forward_fn: Callable[[torch.nn.Module, dict[str, Any], torch.device], Any],
+    postprocess_fn: Callable[[Any, dict[str, Any]], InferencePrediction],
     save_prediction_fn: Callable[
         [DiscoveredScene, SceneArrays, InferencePrediction, Path, InferenceConfig],
         Any,
@@ -166,9 +163,7 @@ def _run_inference_shard(
     shard_dir = Path(shard_dir)
     shard_dir.mkdir(parents=True, exist_ok=True)
 
-    device_obj = torch.device(
-        "cuda" if str(device).startswith("cuda") and torch.cuda.is_available() else "cpu"
-    )
+    device_obj = torch.device("cuda" if str(device).startswith("cuda") and torch.cuda.is_available() else "cpu")
 
     model = model_factory_fn()
 

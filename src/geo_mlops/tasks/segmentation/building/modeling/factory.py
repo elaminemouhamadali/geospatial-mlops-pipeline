@@ -1,12 +1,14 @@
 from __future__ import annotations
-from typing import Any, Dict
+
+from typing import Any
+
 import torch
 
 from geo_mlops.models.backbones.segformer import SegFormerBackbone
 from geo_mlops.models.fusion.concat_fusion import ConcatFusionHead
 
 
-def build_model(train_cfg: Dict[str, Any]) -> torch.nn.Module:
+def build_model(train_cfg: dict[str, Any]) -> torch.nn.Module:
     mcfg = train_cfg.get("model", {})
     bcfg = mcfg.get("backbone", {})
 
@@ -15,7 +17,7 @@ def build_model(train_cfg: Dict[str, Any]) -> torch.nn.Module:
     expect_ctx = bool(mcfg.get("expect_ctx", True))
 
     tile_ch = int(mcfg.get("tile_channels", 1))
-    ctx_ch  = int(mcfg.get("ctx_channels", 1))
+    ctx_ch = int(mcfg.get("ctx_channels", 1))
 
     fused_in_ch = tile_ch + (ctx_ch if expect_ctx else 0) + (2 if add_coords else 0)
 

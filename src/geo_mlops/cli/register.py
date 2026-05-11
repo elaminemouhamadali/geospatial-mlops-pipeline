@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
-from geo_mlops.core.io.train_io import load_train_contract
 from geo_mlops.core.config.loader import load_cfg
+from geo_mlops.core.io.train_io import load_train_contract
 from geo_mlops.core.registry.model_registry import (
     promote_model_to_production,
     register_candidate_model,
@@ -13,9 +13,7 @@ from geo_mlops.core.registry.model_registry import (
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Register or promote MLflow model versions based on gate contracts."
-    )
+    p = argparse.ArgumentParser(description="Register or promote MLflow model versions based on gate contracts.")
 
     p.add_argument("--task", type=str, required=True, help="Task name, e.g. building_seg.")
     p.add_argument(
@@ -50,10 +48,7 @@ def build_argparser() -> argparse.ArgumentParser:
         "--train-manifest-path",
         type=Path,
         default=None,
-        help=(
-            "Optional train_manifest.json. If omitted, register.py attempts to read "
-            "gate_contract.upstream.train_manifest."
-        ),
+        help=("Optional train_manifest.json. If omitted, register.py attempts to read gate_contract.upstream.train_manifest."),
     )
     # Required for promote-production.
     p.add_argument(
@@ -66,7 +61,7 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_argparser().parse_args(argv)
 
     task_cfg = load_cfg(args.task_cfg_path)

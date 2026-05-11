@@ -1,18 +1,24 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
+
 import pandas as pd
 
-from geo_mlops.core.training.sampling import _apply_training_sampler
 from geo_mlops.core.contracts.split_contract import SplitContract
 from geo_mlops.core.contracts.tile_contract import TilesContract
-from geo_mlops.tasks.segmentation.building.data.dataset import BuildingDataset, BuildingDatasetConfig
+from geo_mlops.core.training.sampling import _apply_training_sampler
+from geo_mlops.tasks.segmentation.building.data.dataset import (
+    BuildingDataset,
+    BuildingDatasetConfig,
+)
+
 
 def build_dataset(
     *,
     tiles_df: pd.DataFrame,
-    indices: Optional[Sequence[int]],
-    cfg: Dict[str, Any],
+    indices: Sequence[int] | None,
+    cfg: dict[str, Any],
     split_name: str,
 ) -> BuildingDataset:
     dataset_cfg = dict(cfg.get("dataset", {}) or {})
@@ -29,11 +35,12 @@ def build_dataset(
         context_cache_max_items=int(dataset_cfg.get("context_cache_max_items", 256)),
     )
 
+
 def build_train_val_datasets(
     *,
     tiles: TilesContract,
     split: SplitContract,
-    train_cfg: Dict[str, Any],
+    train_cfg: dict[str, Any],
 ) -> tuple[BuildingDataset, BuildingDataset]:
     df = pd.read_csv(tiles.master_csv_path)
 
@@ -41,10 +48,7 @@ def build_train_val_datasets(
     group_col = str(split_cfg.get("group_col", "scene_id"))
 
     if group_col not in df.columns:
-        raise ValueError(
-            f"Split group_col={group_col!r} not found in tiles CSV. "
-            f"Available columns: {list(df.columns)}"
-        )
+        raise ValueError(f"Split group_col={group_col!r} not found in tiles CSV. Available columns: {list(df.columns)}")
 
     train_groups = set(map(str, split.train_regions))
     val_groups = set(map(str, split.val_regions))
@@ -58,7 +62,7 @@ def build_train_val_datasets(
         raise ValueError("No training rows matched split.train_regions.")
     if not val_indices:
         raise ValueError("No validation rows matched split.val_regions.")
-    
+
     train_df = df.loc[train_indices].copy()
     val_df = df.loc[val_indices].copy()
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from geo_mlops.core.tiling.engine import TilingEngineConfig
 from geo_mlops.core.tiling.policies import AllPolicy, HardMiningPolicy, RegularPolicy
@@ -8,7 +8,7 @@ from geo_mlops.core.tiling.policies import AllPolicy, HardMiningPolicy, RegularP
 TilingPolicyT = AllPolicy | RegularPolicy | HardMiningPolicy
 
 
-def build_tiling_engine_cfg(engine_cfg: Dict[str, Any]) -> TilingEngineConfig:
+def build_tiling_engine_cfg(engine_cfg: dict[str, Any]) -> TilingEngineConfig:
     return TilingEngineConfig(
         pan_dirname=str(engine_cfg.get("pan_dirname", "PAN")),
         gt_dirname=str(engine_cfg.get("gt_dirname", "GT")),
@@ -23,7 +23,7 @@ def build_tiling_engine_cfg(engine_cfg: Dict[str, Any]) -> TilingEngineConfig:
     )
 
 
-def build_tiling_policy(policy_cfg: Dict[str, Any]) -> TilingPolicyT:
+def build_tiling_policy(policy_cfg: dict[str, Any]) -> TilingPolicyT:
     kind = str(policy_cfg.get("kind", "all")).lower().strip()
 
     if kind == "all":
@@ -48,7 +48,4 @@ def build_tiling_policy(policy_cfg: Dict[str, Any]) -> TilingPolicyT:
             difficulty_prefix=str(policy_cfg.get("difficulty_prefix", "difficulty__")),
         )
 
-    raise ValueError(
-        f"Unknown tiling policy kind={kind!r}. "
-        "Expected one of: all, regular, hard_mining."
-    )
+    raise ValueError(f"Unknown tiling policy kind={kind!r}. Expected one of: all, regular, hard_mining.")

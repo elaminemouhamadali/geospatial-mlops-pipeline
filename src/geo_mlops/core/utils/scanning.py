@@ -1,4 +1,4 @@
-from typing import Iterator, Tuple
+from collections.abc import Iterator
 
 
 def _positions(limit: int, tile: int, stride: int):
@@ -12,9 +12,7 @@ def _positions(limit: int, tile: int, stride: int):
     return xs
 
 
-def gen_tiles_cover(
-    h: int, w: int, tile_h: int, tile_w: int, stride_h: int, stride_w: int
-) -> Iterator[Tuple[int, int, int, int, int, int]]:
+def gen_tiles_cover(h: int, w: int, tile_h: int, tile_w: int, stride_h: int, stride_w: int) -> Iterator[tuple[int, int, int, int, int, int]]:
     ys = _positions(h, tile_h, stride_h)
     xs = _positions(w, tile_w, stride_w)
 

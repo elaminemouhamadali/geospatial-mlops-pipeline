@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any
 
+from geo_mlops.core.data.types import DiscoveredScene
 from geo_mlops.core.tiling.adapters.base import (
     SceneArrays,
     TaskAdapter,
     TileWindow,
 )
-from geo_mlops.core.data.types import DiscoveredScene
 
 
 # -------------------------
@@ -26,7 +26,7 @@ class AllPolicy:
 
     sample_prefix: str = "sample__"
 
-    def extra_row_fields(self) -> Dict[str, Any]:
+    def extra_row_fields(self) -> dict[str, Any]:
         return {
             f"{self.sample_prefix}include": True,
             f"{self.sample_prefix}policy": "all",
@@ -41,7 +41,7 @@ class AllPolicy:
         arr: SceneArrays,
         tw: TileWindow,
         sub_roi_pred_missing: bool,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         _ = (adapter, scene, arr, tw, sub_roi_pred_missing)
 
         extra = {
@@ -79,7 +79,7 @@ class RegularPolicy:
     details_prefix: str = "presence__"
     sample_prefix: str = "sample__"
 
-    def extra_row_fields(self) -> Dict[str, Any]:
+    def extra_row_fields(self) -> dict[str, Any]:
         return {
             f"{self.details_prefix}value": 0.0,
             f"{self.sample_prefix}include": False,
@@ -95,25 +95,19 @@ class RegularPolicy:
         arr: SceneArrays,
         tw: TileWindow,
         sub_roi_pred_missing: bool,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         _ = sub_roi_pred_missing
 
         pres = adapter.gt_presence(scene=scene, arr=arr, tw=tw)
 
         presence_value = float(pres.value)
-        sample_include = (
-            True
-            if not self.require_presence
-            else presence_value >= float(self.gt_presence_threshold)
-        )
+        sample_include = True if not self.require_presence else presence_value >= float(self.gt_presence_threshold)
 
-        extra: Dict[str, Any] = {}
+        extra: dict[str, Any] = {}
 
         if pres.details:
             if self.details_prefix:
-                extra.update(
-                    {f"{self.details_prefix}{k}": v for k, v in pres.details.items()}
-                )
+                extra.update({f"{self.details_prefix}{k}": v for k, v in pres.details.items()})
             else:
                 extra.update(pres.details)
 
@@ -121,11 +115,7 @@ class RegularPolicy:
 
         extra[f"{self.sample_prefix}include"] = bool(sample_include)
         extra[f"{self.sample_prefix}policy"] = "regular"
-        extra[f"{self.sample_prefix}reason"] = (
-            "presence_pass"
-            if sample_include
-            else "presence_below_threshold"
-        )
+        extra[f"{self.sample_prefix}reason"] = "presence_pass" if sample_include else "presence_below_threshold"
 
         # Always emit valid tiles into master CSV.
         return True, extra
@@ -160,7 +150,7 @@ class HardMiningPolicy:
     difficulty_prefix: str = "difficulty__"
     sample_prefix: str = "sample__"
 
-    def extra_row_fields(self) -> Dict[str, Any]:
+    def extra_row_fields(self) -> dict[str, Any]:
         return {
             f"{self.presence_prefix}value": 0.0,
             f"{self.difficulty_prefix}value": 0.0,
@@ -177,20 +167,14 @@ class HardMiningPolicy:
         arr: SceneArrays,
         tw: TileWindow,
         sub_roi_pred_missing: bool,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         if sub_roi_pred_missing:
-            raise FileNotFoundError(
-                "HardMiningPolicy requires predictions, but preds directory is missing for ROI: "
-                f"{scene.region}/{scene.subregion}"
-            )
+            raise FileNotFoundError(f"HardMiningPolicy requires predictions, but preds directory is missing for ROI: {scene.region}/{scene.subregion}")
 
         if arr.pred2d is None:
-            raise ValueError(
-                "HardMiningPolicy requires predictions, but pred2d is None for scene/tile: "
-                f"{scene.region}/{scene.subregion}"
-            )
+            raise ValueError(f"HardMiningPolicy requires predictions, but pred2d is None for scene/tile: {scene.region}/{scene.subregion}")
 
-        extra: Dict[str, Any] = {}
+        extra: dict[str, Any] = {}
 
         pres = adapter.gt_presence(scene=scene, arr=arr, tw=tw)
         presence_value = float(pres.value)
@@ -215,9 +199,7 @@ class HardMiningPolicy:
         presence_pass = presence_value >= float(self.gt_presence_threshold)
         difficulty_pass = difficulty_value >= float(self.min_difficulty)
 
-        sample_include = difficulty_pass or (
-            bool(self.include_if_gt_present) and presence_pass
-        )
+        sample_include = difficulty_pass or (bool(self.include_if_gt_present) and presence_pass)
 
         if difficulty_pass:
             reason = "difficulty_pass"
@@ -236,12 +218,12 @@ class HardMiningPolicy:
     @staticmethod
     def _pack_details(
         value: float,
-        details: Dict[str, Any] | None,
+        details: dict[str, Any] | None,
         *,
         prefix: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         key = f"{prefix}value" if prefix else "value"
-        out: Dict[str, Any] = {key: float(value)}
+        out: dict[str, Any] = {key: float(value)}
 
         if details:
             if prefix:
@@ -250,4 +232,3 @@ class HardMiningPolicy:
                 out.update(details)
 
         return out
-    

@@ -25,6 +25,7 @@ def test_core_dependency_imports():
     assert tqdm is not None
     assert yaml is not None
 
+
 if __name__ == "__main__":
     test_geo_mlops_imports()
     test_core_dependency_imports()

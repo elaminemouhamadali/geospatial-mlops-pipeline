@@ -1,24 +1,25 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
-import torch
+from typing import Any
+
 import numpy as np
 import rasterio
-from geo_mlops.core.utils.windows import _to_channels
+import torch
+
 from geo_mlops.core.data.types import DiscoveredScene, SceneArrays
+from geo_mlops.core.inference.factory import resolve_inference_data_cfg
 from geo_mlops.core.inference.types import (
+    InferenceArtifacts,
     InferenceConfig,
     InferencePrediction,
-    InferenceArtifacts,
 )
+from geo_mlops.core.utils.windows import _to_channels
 
-from geo_mlops.core.inference.factory import resolve_inference_data_cfg
-    
-    
+
 def load_inference_scene(
     scene: DiscoveredScene,
-    inference_cfg: Dict[str, Any],
+    inference_cfg: dict[str, Any],
 ) -> SceneArrays:
     data_cfg = resolve_inference_data_cfg(inference_cfg)
 
@@ -35,7 +36,6 @@ def load_inference_scene(
     image_t = torch.from_numpy(image_np).unsqueeze(0)
     image_t = _to_channels(image_t, tile_out_channels)
 
-
     context_t = None
     if use_context and scene.context_path is not None:
         with rasterio.open(scene.context_path) as src:
@@ -51,19 +51,18 @@ def load_inference_scene(
         context=context_t.float() if context_t is not None else None,
         profile=profile,
     )
-    
+
+
 def build_inference_postprocessor(
-    inference_cfg: Dict[str, Any],
+    inference_cfg: dict[str, Any],
 ):
     data_cfg = resolve_inference_data_cfg(inference_cfg)
 
     output_channel = int(data_cfg.get("output_channel", 0))
 
-    def postprocess_fn(outputs: torch.Tensor, batch: Dict[str, Any]) -> InferencePrediction:
+    def postprocess_fn(outputs: torch.Tensor, batch: dict[str, Any]) -> InferencePrediction:
         if not torch.is_tensor(outputs):
-            raise TypeError(
-                f"Building eval expected tensor outputs, got {type(outputs).__name__}"
-            )
+            raise TypeError(f"Building eval expected tensor outputs, got {type(outputs).__name__}")
 
         if outputs.ndim != 4:
             raise ValueError(f"Expected outputs [B,C,H,W], got {tuple(outputs.shape)}")
@@ -77,7 +76,7 @@ def build_inference_postprocessor(
         )
 
     return postprocess_fn
-    
+
 
 def save_inference_prediction(
     scene: DiscoveredScene,
@@ -124,8 +123,6 @@ def save_inference_prediction(
         probability_path=probability_path,
         logits_path=logits_path,
     )
-
-
 
 
 def load_checkpoint(

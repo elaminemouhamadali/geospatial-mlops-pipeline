@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, asdict
-from geo_mlops.core.utils.dataclasses import _load_json
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import mlflow
 from mlflow.tracking import MlflowClient
+
+from geo_mlops.core.utils.dataclasses import _load_json
 
 REGISTRY_MANIFEST_NAME = "registry_result.json"
 
@@ -17,33 +18,30 @@ class RegistryResult:
     action: str
     model_name: str
     model_version: str
-    model_uri: Optional[str]
+    model_uri: str | None
     gate_name: str
     gate_passed: bool
-    mlflow_run_id: Optional[str]
-    registry_uri: Optional[str]
-    tracking_uri: Optional[str]
-    details: Dict[str, Any]
+    mlflow_run_id: str | None
+    registry_uri: str | None
+    tracking_uri: str | None
+    details: dict[str, Any]
 
 
-def _require_gate_passed(gate_contract_path: str | Path) -> Dict[str, Any]:
+def _require_gate_passed(gate_contract_path: str | Path) -> dict[str, Any]:
     gate = _load_json(gate_contract_path)
 
     if not bool(gate.get("passed", False)):
         gate_name = gate.get("gate_name", "<unknown>")
         decision = gate.get("decision", "<unknown>")
-        raise RuntimeError(
-            f"Gate did not pass; refusing registry transition. "
-            f"gate={gate_name!r}, decision={decision!r}"
-        )
+        raise RuntimeError(f"Gate did not pass; refusing registry transition. gate={gate_name!r}, decision={decision!r}")
 
     return gate
 
 
 def _write_registry_result(
     result: RegistryResult,
-    out_dir: Optional[str | Path],
-) -> Optional[Path]:
+    out_dir: str | Path | None,
+) -> Path | None:
     if out_dir is None:
         return None
 
@@ -83,11 +81,11 @@ def register_candidate_model(
     mlflow_run_id: str,
     gate_contract_path: str | Path,
     model_artifact_path: str = "model",
-    tracking_uri: Optional[str] = None,
-    registry_uri: Optional[str] = None,
+    tracking_uri: str | None = None,
+    registry_uri: str | None = None,
     candidate_alias: str = "candidate",
-    out_dir: Optional[str | Path] = None,
-    extra_tags: Optional[Dict[str, str]] = None,
+    out_dir: str | Path | None = None,
+    extra_tags: dict[str, str] | None = None,
 ) -> RegistryResult:
     """
     Register a model version after Gate A passes.
@@ -167,12 +165,12 @@ def promote_model_to_production(
     model_name: str,
     model_version: str,
     gate_contract_path: str | Path,
-    tracking_uri: Optional[str] = None,
-    registry_uri: Optional[str] = None,
+    tracking_uri: str | None = None,
+    registry_uri: str | None = None,
     production_alias: str = "production",
     archive_candidate_alias: bool = False,
-    out_dir: Optional[str | Path] = None,
-    extra_tags: Optional[Dict[str, str]] = None,
+    out_dir: str | Path | None = None,
+    extra_tags: dict[str, str] | None = None,
 ) -> RegistryResult:
     """
     Promote an existing registered model version after Gate B passes.

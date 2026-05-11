@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Sequence, TypeVar
+from collections.abc import Sequence
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -11,11 +12,11 @@ T = TypeVar("T")
 def shard_sequence(
     items: Sequence[T],
     *,
-    num_shards: Optional[int] = None,
-    items_per_shard: Optional[int] = None,
-    default_num_shards: Optional[int] = None,
+    num_shards: int | None = None,
+    items_per_shard: int | None = None,
+    default_num_shards: int | None = None,
     drop_empty: bool = True,
-) -> List[List[T]]:
+) -> list[list[T]]:
     """
     Split a sequence into deterministic shards.
 
@@ -61,10 +62,7 @@ def shard_sequence(
         if items_per_shard <= 0:
             raise ValueError("items_per_shard must be > 0.")
 
-        return [
-            item_list[i : i + items_per_shard]
-            for i in range(0, len(item_list), items_per_shard)
-        ]
+        return [item_list[i : i + items_per_shard] for i in range(0, len(item_list), items_per_shard)]
 
     if num_shards is None:
         num_shards = default_num_shards if default_num_shards is not None else 1
@@ -76,10 +74,7 @@ def shard_sequence(
 
     shard_size = int(math.ceil(len(item_list) / num_shards))
 
-    shards = [
-        item_list[i : i + shard_size]
-        for i in range(0, len(item_list), shard_size)
-    ]
+    shards = [item_list[i : i + shard_size] for i in range(0, len(item_list), shard_size)]
 
     if drop_empty:
         shards = [shard for shard in shards if shard]
@@ -90,9 +85,9 @@ def shard_sequence(
 def shard_count(
     items: Sequence[T],
     *,
-    num_shards: Optional[int] = None,
-    items_per_shard: Optional[int] = None,
-    default_num_shards: Optional[int] = None,
+    num_shards: int | None = None,
+    items_per_shard: int | None = None,
+    default_num_shards: int | None = None,
 ) -> int:
     """
     Convenience helper returning the number of shards that would be produced.

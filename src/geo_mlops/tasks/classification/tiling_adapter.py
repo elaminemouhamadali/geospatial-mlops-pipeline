@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
+
+from geo_mlops.core.data.types import DiscoveredScene
 from geo_mlops.core.tiling.adapters.base import (
     BaseAdapter,
     DifficultyResult,
@@ -11,7 +13,6 @@ from geo_mlops.core.tiling.adapters.base import (
     SceneArrays,
     TileWindow,
 )
-from geo_mlops.core.data.types import DiscoveredScene
 
 
 @dataclass
@@ -47,7 +48,7 @@ class ClassificationAdapter(BaseAdapter):
     def allow_fabricated_zero_gt(self) -> bool:
         return False
 
-    def stems_to_process(self, *, pan_map: Dict[str, Any], gt_map: Dict[str, Any]) -> list[str]:
+    def stems_to_process(self, *, pan_map: dict[str, Any], gt_map: dict[str, Any]) -> list[str]:
         # classification usually uses only labeled scenes
         return sorted(set(gt_map.keys()))
 
@@ -151,7 +152,7 @@ class ClassificationAdapter(BaseAdapter):
     # -----------------------------
     # Task-specific CSV columns
     # -----------------------------
-    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> Dict[str, Any]:
+    def build_task_row(self, *, scene: DiscoveredScene, arr: SceneArrays, tw: TileWindow) -> dict[str, Any]:
         """
         Base class does not impose any task columns.
         Concrete task adapters should override this.
@@ -160,6 +161,4 @@ class ClassificationAdapter(BaseAdapter):
           - gt_label
           - maybe pred_label (if present)
         """
-        raise NotImplementedError(
-            "ClassificationAdapter is a helper base. Create a concrete task adapter and implement build_task_row()."
-        )
+        raise NotImplementedError("ClassificationAdapter is a helper base. Create a concrete task adapter and implement build_task_row().")
