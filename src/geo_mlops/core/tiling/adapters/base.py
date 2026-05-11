@@ -12,8 +12,8 @@ import numpy as np
 # -----------------------------
 @dataclass(frozen=True)
 class SceneInputs:
-    region: str
-    subregion: str
+    roi: str
+    sub_roi: str
     stem: str
 
     pan_path: Path
@@ -141,7 +141,7 @@ class TilingPolicy(Protocol):
         scene: SceneInputs,
         arr: SceneArrays,
         tw: TileWindow,
-        roi_pred_missing: bool,
+        sub_roi_pred_missing: bool,
     ) -> tuple[bool, Dict[str, Any]]: ...
 
 
