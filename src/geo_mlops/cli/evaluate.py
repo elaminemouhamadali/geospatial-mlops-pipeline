@@ -46,6 +46,14 @@ def build_argparser() -> argparse.ArgumentParser:
         required=True,
         help="Output directory for eval_summary.json, eval_manifest.json",
     )
+
+    p.add_argument("--execution-backend", choices=["local", "ray"], default="local")
+
+    p.add_argument("--ray-address", type=str, default=None)
+    p.add_argument("--num-workers", type=int, default=1)
+    p.add_argument("--items-per-shard", "--items_per_shard", dest="items_per_shard", type=int, default=None)
+    p.add_argument("--num-gpus-per-worker", type=float, default=1.0)
+    p.add_argument("--num-cpus-per-worker", type=int, default=4)
     return p
 
 
@@ -65,14 +73,45 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         metric_accumulator=metric_accumulator,
     )
 
-    manifest_path, contract = run_prediction_evaluation(
-        task=args.task,
-        prediction_table_path=inference_contract.prediction_table_path,
-        out_dir=args.eval_dir_path,
-        evaluate_prediction_row_fn=evaluate_row_fn,
-        metric_accumulator=metric_accumulator,
-        eval_cfg_raw=eval_cfg,
-    )
+    if args.execution_backend == "ray":
+        from geo_mlops.core.execution.ray_backend import (
+            RayBackendConfig,
+            init_ray_backend,
+            shutdown_ray_backend,
+        )
+        from geo_mlops.core.evaluation.ray_runner import run_prediction_evaluation_ray
+
+        ray_cfg = RayBackendConfig(
+            address=args.ray_address,
+            namespace="geo-mlops",
+        )
+
+        init_ray_backend(ray_cfg)
+
+        try:
+            manifest_path, contract = run_prediction_evaluation_ray(
+                task=args.task,
+                prediction_table_path=inference_contract.prediction_table_path,
+                out_dir=args.eval_dir_path,
+                eval_cfg=eval_cfg,
+                build_metric_accumulator_fn=task_plugin.build_eval_metric_accumulator,
+                build_prediction_evaluator_fn=task_plugin.build_prediction_evaluator,
+                num_workers=args.num_workers,
+                items_per_shard=args.items_per_shard,
+                num_cpus_per_worker=args.num_cpus_per_worker,
+            )
+        finally:
+            shutdown_ray_backend(ray_cfg)
+
+    else:
+        manifest_path, contract = run_prediction_evaluation(
+            task=args.task,
+            prediction_table_path=inference_contract.prediction_table_path,
+            out_dir=args.eval_dir_path,
+            evaluate_prediction_row_fn=evaluate_row_fn,
+            metric_accumulator=metric_accumulator,
+            eval_cfg_raw=eval_cfg,
+        )
 
     print("[evaluate] done")
     print(f"[evaluate] manifest={manifest_path}")
