@@ -1,22 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run from repository root regardless of caller location.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# Resolve repository root robustly, regardless of where this script lives.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "${REPO_ROOT}"
 
 TASK="${TASK:-building_seg}"
-TASK_CFG_PATH="${TASK_CFG_PATH:-src/geo_mlops/tasks/segmentation/building/config/default.yaml}"
+TASK_CFG_PATH="${TASK_CFG_PATH:-examples/tiny_building_seg/config/default.yaml}"
 DATASET_ROOT_PATH="${DATASET_ROOT_PATH:-examples/tiny_building_seg/train_data}"
 GOLDEN_ROOT_PATH="${GOLDEN_ROOT_PATH:-examples/tiny_building_seg/test_data}"
 DEVICE="${DEVICE:-cpu}"
 RUN_DIR_PATH="${RUN_DIR_PATH:-outputs/tiny_building_seg_local}"
 EXECUTION_BACKEND="${EXECUTION_BACKEND:-local}"
+ENABLE_MLFLOW="${ENABLE_MLFLOW:-1}"
 
 EXTRA_ARGS=()
 
-if [[ "${ENABLE_MLFLOW:-0}" == "1" ]]; then
+if [[ "${ENABLE_MLFLOW}" == "1" ]]; then
+  MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}"
+  MLFLOW_EXPERIMENT="${MLFLOW_EXPERIMENT:-tiny_building_seg_demo}"
+
+  echo "[tiny-demo] mlflow enabled"
+  echo "[tiny-demo] mlflow_tracking_uri=${MLFLOW_TRACKING_URI}"
+  echo "[tiny-demo] mlflow_experiment=${MLFLOW_EXPERIMENT}"
+
+  if ! curl -fsS "${MLFLOW_TRACKING_URI}/health" >/dev/null 2>&1; then
+    echo "[tiny-demo] ERROR: MLflow server is not reachable at ${MLFLOW_TRACKING_URI}"
+    echo "[tiny-demo] Start one locally with:"
+    echo "  mlflow server \\"
+    echo "    --host 127.0.0.1 \\"
+    echo "    --port 5000 \\"
+    echo "    --backend-store-uri sqlite:///mlflow.db \\"
+    echo "    --default-artifact-root ./mlruns"
+    exit 1
+  fi
+  
   EXTRA_ARGS+=(
     --mlflow
     --mlflow-tracking-uri "${MLFLOW_TRACKING_URI:-http://127.0.0.1:5000}"
@@ -38,12 +56,21 @@ else
   )
 fi
 
+echo "[tiny-demo] repo_root=${REPO_ROOT}"
 echo "[tiny-demo] task=${TASK}"
 echo "[tiny-demo] backend=${EXECUTION_BACKEND}"
+echo "[tiny-demo] task_cfg=${TASK_CFG_PATH}"
 echo "[tiny-demo] dataset_root=${DATASET_ROOT_PATH}"
 echo "[tiny-demo] golden_root=${GOLDEN_ROOT_PATH}"
 echo "[tiny-demo] run_dir=${RUN_DIR_PATH}"
 echo "[tiny-demo] device=${DEVICE}"
+
+test -f "${TASK_CFG_PATH}" || {
+  echo "[tiny-demo] ERROR: task config not found: ${TASK_CFG_PATH}"
+  pwd
+  ls -lah src/geo_mlops/tasks/segmentation/building/config || true
+  exit 1
+}
 
 python -m geo_mlops.cli.run_pipeline \
   --task "${TASK}" \

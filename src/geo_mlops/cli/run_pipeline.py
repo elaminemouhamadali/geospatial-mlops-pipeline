@@ -60,8 +60,8 @@ def build_argparser() -> argparse.ArgumentParser:
     # Ray
     p.add_argument("--execution-backend", choices=["local", "ray"], default="local")
     p.add_argument("--ray-address", type=str, default=None)
-    p.add_argument("--num-workers", type=int, default=None)
-    p.add_argument("--items-per-shard", "--items_per_shard", dest="items_per_shard", type=int, default=None)
+    p.add_argument("--num-workers", type=int, default=1)
+    p.add_argument("--items-per-shard", "--items_per_shard", dest="items_per_shard", type=int, default=25)
     p.add_argument("--num-gpus-per-worker", type=float, default=0.0)
     p.add_argument("--num-cpus-per-worker", type=int, default=2)
 
@@ -270,19 +270,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             "--inference-dir-path",
             str(golden_inference_dir_path),
             "--device",
-            args.device,
+            str(args.device),
             "--execution-backend",
-            args.execution_backend,
+            str(args.execution_backend),
             "--ray-address",
-            args.ray_address,
+            str(args.ray_address),
             "--num-workers",
-            args.num_workers,
+            str(args.num_workers),
             "--items-per-shard",
-            args.items_per_shard,
+            str(args.items_per_shard),
             "--num-gpus-per-worker",
-            args.num_gpus_per_worker,
+            str(args.num_gpus_per_worker),
             "--num-cpus-per-worker",
-            args.num_cpus_per_worker,
+            str(args.num_cpus_per_worker),
         ]
 
         _run_stage("inference_golden", inference.main, inference_argv)
@@ -303,17 +303,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             "--eval-dir-path",
             str(golden_eval_dir_path),
             "--execution-backend",
-            args.execution_backend,
+            str(args.execution_backend),
             "--ray-address",
-            args.ray_address,
+            str(args.ray_address),
             "--num-workers",
-            args.num_workers,
+            str(args.num_workers),
             "--items-per-shard",
-            args.items_per_shard,
+            str(args.items_per_shard),
             "--num-gpus-per-worker",
-            args.num_gpus_per_worker,
+            str(args.num_gpus_per_worker),
             "--num-cpus-per-worker",
-            args.num_cpus_per_worker,
+            str(args.num_cpus_per_worker),
         ]
 
         _run_stage("evaluate_golden", evaluate.main, eval_argv)
