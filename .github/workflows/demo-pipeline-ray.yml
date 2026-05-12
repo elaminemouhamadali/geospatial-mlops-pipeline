@@ -62,7 +62,7 @@ jobs:
       - name: Install Python package on runner
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -e ".[dev,models,ray]"
+          python -m pip install -e ".[dev,ml,ray]"
 
       - name: Show environment
         run: |
@@ -110,6 +110,10 @@ jobs:
       - name: Start Ray local cluster
         run: |
           docker compose -f infra/ray-local/docker-compose.yml up -d
+
+      - name: Show Ray containers after startup
+        run: |
+          docker compose -f infra/ray-local/docker-compose.yml ps -a
 
       - name: Wait for Ray dashboard
         run: |
