@@ -1,10 +1,10 @@
 # Core Splitting Layer (`core/splitting`) — Splitting Guide
 
-This document explains **what lives in `core/splitting/splits.py`**, what does **not**, and how it interacts with:
+This document explains **what lives in `core/splitting/split.py`**, what does **not**, and how it interacts with:
 
-- `mlops_tools/make_splits.py`
-- `core/contracts/splits_contract.py`
-- `core/contracts/splits_io.py`
+- `cli/split.py`
+- `core/contracts/split_contract.py`
+- `core/contracts/split_io.py`
 
 If you are confused about *where splitting logic belongs*, this file is the source of truth.
 
@@ -12,8 +12,8 @@ If you are confused about *where splitting logic belongs*, this file is the sour
 
 ## 1. Mental Model (TL;DR)
 
-> **`core/splitting/splits.py` is a library.**  
-> **`mlops_tools/make_splits.py` is a pipeline stage runner.**
+> **`core/splitting/split.py` is a library.**  
+> **`cli/split.py` is a pipeline stage runner.**
 
 - Core computes *how* to split.
 - MLOps tools decide *when, from what inputs, and where outputs go*.
@@ -25,9 +25,9 @@ If you remember only one thing, remember this:
 
 ---
 
-## 2. Purpose of `core/splitting/splits.py`
+## 2. Purpose of `core/splitting/split.py`
 
-`core/splitting/splits.py` implements the **group-aware splitting algorithms** used across tasks.
+`core/splitting/split.py` implements the **group-aware splitting algorithms** used across tasks.
 
 It answers questions like:
 
@@ -45,7 +45,7 @@ It does **not** answer questions like:
 
 ---
 
-## 3. What Belongs in `core/splitting/splits.py`
+## 3. What Belongs in `core/splitting/split.py`
 
 ### 3.1 Algorithmic Data Structures
 
@@ -107,7 +107,7 @@ They:
 
 ---
 
-## 4. What Does NOT Belong in `core/splitting/splits.py`
+## 4. What Does NOT Belong in `core/splitting/split.py`
 
 The following must **never** live in core:
 
@@ -122,9 +122,9 @@ If core starts caring about these, it stops being reusable.
 
 ---
 
-## 5. Why `mlops_tools/make_splits.py` Exists (and Why It’s Separate)
+## 5. Why `cli/split.py` Exists (and Why It’s Separate)
 
-`mlops_tools/make_splits.py` exists because **splitting is a pipeline stage**, not just a function call.
+`cli/split.py` exists because **splitting is a pipeline stage**, not just a function call.
 
 Its responsibilities are:
 
@@ -132,7 +132,7 @@ Its responsibilities are:
 - Resolving **input artifacts** (via `tiles_manifest.json`)
 - Applying CLI overrides
 - Choosing output directories
-- Calling `core/splitting/splits.py`
+- Calling `core/splitting/split.py`
 - Writing pipeline artifacts
 
 It is allowed to be opinionated and pipeline-aware.
@@ -145,7 +145,7 @@ It is allowed to be opinionated and pipeline-aware.
 
 Defined in:
 
-- `core/contracts/splits_contract.py`
+- `core/contracts/split_contract.py`
 
 This dataclass defines the **stage boundary**:
 
@@ -156,7 +156,7 @@ It is intentionally minimal and task-agnostic.
 
 ---
 
-### 6.2 `splits_io.py`
+### 6.2 `split_io.py`
 
 Defined in:
 
@@ -179,9 +179,9 @@ Tiling stage
   ↓
 TilesContract (tiles_manifest.json)
   ↓
-mlops_tools/make_splits.py
+cli/split.py
   ↓
-core/splitting/splits.py   ← pure algorithm
+core/splitting/split.py   ← pure algorithm
   ↓
 SplitResult (in memory)
   ↓

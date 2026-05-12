@@ -31,7 +31,8 @@ Those belong in `tasks/`.
 | `tiling/` | Task-agnostic tiling engine and policy annotation. |
 | `splitting/` | Group-aware deterministic splitting. |
 | `training/` | Generic training loop and callbacks. |
-| `evaluation/` | Generic full-scene sliding-window evaluation. |
+| `inference/` | Generic full-scene sliding-window inference. |
+| `evaluation/` | Generic testing set evaluation (scoring). |
 | `gating/` | Threshold/KPI decision engine. |
 | `registry/` | Task registry and MLflow model registry utilities. |
 | `utils/` | Small shared helpers. |
