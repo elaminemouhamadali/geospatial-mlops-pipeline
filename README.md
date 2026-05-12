@@ -2,10 +2,10 @@
 
 A contract-driven MLOps framework for remote-sensing workflows, built to move geospatial ML tasks from local experimentation to reproducible Docker, MLflow, Ray-distributed, and Kubernetes-ready execution.
 
-[![CI](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/ci.yml)
-[![Docker Publish](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml)
-[![Demo Pipeline Local](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-local.yml/badge.svg)](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-local.yml)
-[![Demo Ray Local Cluster](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml/badge.svg)](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml)
+[![CI](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/ci.yml)
+[![Docker Publish](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml)
+[![Demo Pipeline Local](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-local.yml/badge.svg)](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-local.yml)
+[![Demo Ray Local Cluster](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml/badge.svg)](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml)
 
 ## 📌 Quick links
 
@@ -53,10 +53,10 @@ Core ideas:
 
 | Workflow | What it proves |
 |---|---|
-| [CI](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/ci.yml) | Linting, formatting, and tests pass |
-| [Docker Publish](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml) | Runtime images are built and published to GHCR |
-| [Demo Pipeline Local](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-local.yml) | Full tiny building-segmentation lifecycle runs with MLflow tracking |
-| [Demo Ray Local Cluster](https://github.com/maelamine-genai/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml) | Docker Compose Ray cluster starts and executes distributed worker tasks |
+| [CI](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/ci.yml) | Linting, formatting, and tests pass |
+| [Docker Publish](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml) | Runtime images are built and published to GHCR |
+| [Demo Pipeline Local](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-local.yml) | Full tiny building-segmentation lifecycle runs with MLflow tracking |
+| [Demo Ray Local Cluster](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml) | Docker Compose Ray cluster starts and executes distributed worker tasks |
 
 The demo workflows upload pipeline outputs, MLflow metadata, Ray logs, and smoke-test artifacts as GitHub Actions artifacts.
 
@@ -234,16 +234,16 @@ Runtime images are built and published by the `Docker Publish` GitHub Actions wo
 
 | Image tag | Purpose |
 |---|---|
-| `ghcr.io/maelamine-genai/geospatial-mlops-pipeline:slim` | Base runtime for core CLI execution |
-| `ghcr.io/maelamine-genai/geospatial-mlops-pipeline:ray-cpu` | Ray head/worker runtime for CPU distributed execution and smoke tests |
+| `ghcr.io/elaminemouhamadali/geospatial-mlops-pipeline:slim` | Base runtime for core CLI execution |
+| `ghcr.io/elaminemouhamadali/geospatial-mlops-pipeline:ray-cpu` | Ray head/worker runtime for CPU distributed execution and smoke tests |
 
 Local build files are under [`docker/`](docker/README.md).
 
 Example pull:
 
 ```bash
-docker pull ghcr.io/maelamine-genai/geospatial-mlops-pipeline:slim
-docker pull ghcr.io/maelamine-genai/geospatial-mlops-pipeline:ray-cpu
+docker pull ghcr.io/elaminemouhamadali/geospatial-mlops-pipeline:slim
+docker pull ghcr.io/elaminemouhamadali/geospatial-mlops-pipeline:ray-cpu
 ```
 
 ---
