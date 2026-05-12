@@ -57,6 +57,14 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--mlflow-tracking-uri", type=str, default=None)
     p.add_argument("--mlflow-experiment", type=str, default=None)
 
+    # Ray
+    p.add_argument("--execution-backend", choices=["local", "ray"], default="local")
+    p.add_argument("--ray-address", type=str, default=None)
+    p.add_argument("--num-workers", type=int, default=None)
+    p.add_argument("--items-per-shard", "--items_per_shard", dest="items_per_shard", type=int, default=None)
+    p.add_argument("--num-gpus-per-worker", type=float, default=0.0)
+    p.add_argument("--num-cpus-per-worker", type=int, default=2)
+
     # Stage control
     p.add_argument("--force-tiling", action="store_true")
     p.add_argument("--verbose-tiling", action="store_true")
@@ -263,6 +271,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             str(golden_inference_dir_path),
             "--device",
             args.device,
+            "--execution-backend",
+            args.execution_backend,
+            "--ray-address",
+            args.ray_address,
+            "--num-workers",
+            args.num_workers,
+            "--items-per-shard",
+            args.items_per_shard,
+            "--num-gpus-per-worker",
+            args.num_gpus_per_worker,
+            "--num-cpus-per-worker",
+            args.num_cpus_per_worker,
         ]
 
         _run_stage("inference_golden", inference.main, inference_argv)
@@ -282,6 +302,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             str(inference_manifest_path),
             "--eval-dir-path",
             str(golden_eval_dir_path),
+            "--execution-backend",
+            args.execution_backend,
+            "--ray-address",
+            args.ray_address,
+            "--num-workers",
+            args.num_workers,
+            "--items-per-shard",
+            args.items_per_shard,
+            "--num-gpus-per-worker",
+            args.num_gpus_per_worker,
+            "--num-cpus-per-worker",
+            args.num_cpus_per_worker,
         ]
 
         _run_stage("evaluate_golden", evaluate.main, eval_argv)

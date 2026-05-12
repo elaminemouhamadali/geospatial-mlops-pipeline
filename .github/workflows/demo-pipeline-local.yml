@@ -1,0 +1,82 @@
+name: Demo Pipeline Local
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "examples/tiny_building_seg/**"
+      - "src/**"
+      - "pyproject.toml"
+      - "requirements*.txt"
+      - ".github/workflows/demo-pipeline-local.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  demo-local:
+    name: Run tiny local pipeline demo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libgdal-dev \
+            libproj-dev \
+            proj-bin \
+            proj-data
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev,models]"
+
+      - name: Start MLflow server
+        run: |
+          mkdir -p /tmp/mlruns
+          nohup mlflow server \
+            --host 127.0.0.1 \
+            --port 5000 \
+            --backend-store-uri sqlite:////tmp/mlflow.db \
+            --default-artifact-root /tmp/mlruns \
+            > /tmp/mlflow.log 2>&1 &
+
+      - name: Wait for MLflow
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:5000/health >/dev/null; then
+              echo "MLflow is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "MLflow failed to start"
+          cat /tmp/mlflow.log
+          exit 1
+
+      - name: Run tiny local pipeline
+        run: |
+          bash examples/tiny_building_seg/run_full_pipeline_local.sh
+
+      - name: Upload demo outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-building-seg-local-demo
+          path: |
+            outputs/tiny_building_seg_local/
+            /tmp/mlflow.log

@@ -161,3 +161,7 @@ pip-delete-this-directory.txt
 *.swp
 *.swo
 *~
+
+# Keep real rasters ignored, but allow tiny committed demo rasters.
+!examples/tiny_building_seg/**/*.tif
+!examples/tiny_building_seg/**/*.tiff

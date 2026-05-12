@@ -44,10 +44,10 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--execution-backend", choices=["local", "ray"], default="local")
 
     p.add_argument("--ray-address", type=str, default=None)
-    p.add_argument("--num-workers", type=int, default=1)
+    p.add_argument("--num-workers", type=int, default=2)
     p.add_argument("--items-per-shard", "--items_per_shard", dest="items_per_shard", type=int, default=None)
-    p.add_argument("--num-gpus-per-worker", type=float, default=1.0)
-    p.add_argument("--num-cpus-per-worker", type=int, default=4)
+    p.add_argument("--num-gpus-per-worker", type=float, default=0.0)
+    p.add_argument("--num-cpus-per-worker", type=int, default=2)
     return p
 
 
