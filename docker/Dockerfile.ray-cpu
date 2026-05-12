@@ -7,6 +7,6 @@ RUN python -m pip install \
     --retries 10 \
     --timeout 120 \
     --progress-bar off \
-    -e ".[ray]"
+    -e ".[ray,ml]"
 
 CMD ["bash"]
