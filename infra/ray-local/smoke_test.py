@@ -13,10 +13,11 @@ import ray
 
 @ray.remote(num_cpus=1)
 def inspect_worker(task_id: int, output_dir: str) -> dict:
-    import geo_mlops
     import rasterio
     import torch
     import transformers
+
+    import geo_mlops
 
     host = socket.gethostname()
     node_id = ray.get_runtime_context().get_node_id()
@@ -66,9 +67,7 @@ def main() -> None:
     print(f"Output dir: {output_dir}")
 
     if len(hosts) < 2:
-        raise RuntimeError(
-            "Smoke test only used one host. Ray may not be distributing tasks across workers."
-        )
+        raise RuntimeError("Smoke test only used one host. Ray may not be distributing tasks across workers.")
 
     print("\nRay smoke test PASSED.")
 
