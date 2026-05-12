@@ -68,15 +68,22 @@ jobs:
           cat /tmp/mlflow.log
           exit 1
 
-      - name: Run tiny local pipeline
+      - name: Run tiny full pipeline
+        env:
+          ENABLE_MLFLOW: "1"
+          MLFLOW_TRACKING_URI: "http://127.0.0.1:5000"
+          MLFLOW_EXPERIMENT: "tiny_building_seg_demo"
+          DEVICE: "cpu"
         run: |
-          bash examples/tiny_building_seg/run_full_pipeline_local.sh
+          bash examples/run_full_pipeline_local.sh
 
       - name: Upload demo outputs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tiny-building-seg-local-demo
+          name: tiny-building-seg-local-demo-outputs
           path: |
             outputs/tiny_building_seg_local/
             /tmp/mlflow.log
+            /tmp/mlruns/
+            /tmp/mlflow.db
