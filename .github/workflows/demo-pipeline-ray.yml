@@ -1,4 +1,4 @@
-name: Demo Pipeline Ray
+name: Demo Ray Local Cluster
 
 on:
   workflow_dispatch:
@@ -6,12 +6,9 @@ on:
     branches:
       - main
     paths:
-      - "examples/tiny_building_seg/**"
-      - "examples/run_full_pipeline_local.sh"
       - "infra/ray-local/**"
-      - "src/**"
-      - "pyproject.toml"
-      - "requirements*.txt"
+      - "src/geo_mlops/core/execution/**"
+      - "infra/ray-local/smoke_test.py"
       - ".github/workflows/demo-pipeline-ray.yml"
 
 permissions:
@@ -20,85 +17,33 @@ permissions:
 
 jobs:
   demo-ray:
-    name: Run tiny Ray pipeline demo
+    name: Run Ray local cluster smoke demo
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    env:
-      ENABLE_MLFLOW: "1"
-      MLFLOW_TRACKING_URI_HOST: "http://127.0.0.1:5000"
-      MLFLOW_TRACKING_URI_CONTAINER: "http://host.docker.internal:5000"
-      MLFLOW_EXPERIMENT: "tiny_building_seg_ray_demo"
-
-      EXECUTION_BACKEND: "ray"
-      RAY_ADDRESS: "auto"
-      ITEMS_PER_SHARD: "2"
-      NUM_GPUS_PER_WORKER: "0"
-      NUM_CPUS_PER_WORKER: "2"
-      DEVICE: "cpu"
-      RUN_DIR_PATH: "outputs/tiny_building_seg_ray"
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install system dependencies
+      - name: Show Docker environment
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            curl \
-            gdal-bin \
-            libgdal-dev \
-            libproj-dev \
-            proj-bin \
-            proj-data
-
-      - name: Install Python package on runner
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -e ".[dev,ml,ray]"
-
-      - name: Show environment
-        run: |
-          python --version
-          python -m pip list
           docker version
           docker compose version
+          df -h
 
-      - name: Start MLflow server on runner
+      - name: Free disk space
         run: |
-          mkdir -p /tmp/mlruns
-          nohup mlflow server \
-            --host 0.0.0.0 \
-            --port 5000 \
-            --backend-store-uri sqlite:////tmp/mlflow.db \
-            --default-artifact-root /tmp/mlruns \
-            > /tmp/mlflow.log 2>&1 &
-
-      - name: Wait for MLflow
-        run: |
-          for i in {1..60}; do
-            if curl -fsS "${MLFLOW_TRACKING_URI_HOST}/health" >/dev/null; then
-              echo "MLflow is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-
-          echo "MLflow failed to start"
-          cat /tmp/mlflow.log
-          exit 1
+          df -h
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
 
       - name: Prepare host output directories
         run: |
           mkdir -p outputs mlruns
-
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -106,6 +51,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Ray image
+        run: |
+          docker compose -f infra/ray-local/docker-compose.yml pull -q
 
       - name: Start Ray local cluster
         run: |
@@ -118,7 +67,7 @@ jobs:
       - name: Wait for Ray dashboard
         run: |
           for i in {1..90}; do
-            if curl -fsS http://127.0.0.1:8265 >/dev/null; then
+            if curl -fsS http://127.0.0.1:8265/api/version >/dev/null; then
               echo "Ray dashboard is ready"
               exit 0
             fi
@@ -126,13 +75,9 @@ jobs:
           done
 
           echo "Ray failed to start"
-          docker compose -f infra/ray-local/docker-compose.yml ps
-          docker compose -f infra/ray-local/docker-compose.yml logs
+          docker compose -f infra/ray-local/docker-compose.yml ps -a
+          docker compose -f infra/ray-local/docker-compose.yml logs --tail=300
           exit 1
-
-      - name: Show Ray cluster containers
-        run: |
-          docker compose -f infra/ray-local/docker-compose.yml ps
 
       - name: Run Ray smoke test inside Ray head
         run: |
@@ -141,63 +86,28 @@ jobs:
             python infra/ray-local/smoke_test.py
           '
 
-      - name: Run tiny Ray pipeline inside Ray head
+      - name: Capture Ray status
+        if: always()
         run: |
           docker compose -f infra/ray-local/docker-compose.yml exec -T ray-head bash -lc '
-            cd /workspace
-
-            ENABLE_MLFLOW=1 \
-            MLFLOW_TRACKING_URI="${{ env.MLFLOW_TRACKING_URI_CONTAINER }}" \
-            MLFLOW_EXPERIMENT="${{ env.MLFLOW_EXPERIMENT }}" \
-            EXECUTION_BACKEND=ray \
-            RAY_ADDRESS=auto \
-            ITEMS_PER_SHARD="${{ env.ITEMS_PER_SHARD }}" \
-            NUM_GPUS_PER_WORKER="${{ env.NUM_GPUS_PER_WORKER }}" \
-            NUM_CPUS_PER_WORKER="${{ env.NUM_CPUS_PER_WORKER }}" \
-            DEVICE="${{ env.DEVICE }}" \
-            RUN_DIR_PATH="${{ env.RUN_DIR_PATH }}" \
-            bash examples/run_full_pipeline_local.sh
-          '
-
-      - name: Show output tree
-        if: always()
-        run: |
-          echo "==== outputs ===="
-          find outputs -maxdepth 6 -type f | sort || true
-
-      - name: Dump Ray logs on failure
-        if: failure()
-        run: |
-          docker compose -f infra/ray-local/docker-compose.yml ps || true
-          docker compose -f infra/ray-local/docker-compose.yml logs || true
-
-      - name: Dump MLflow logs on failure
-        if: failure()
-        run: |
-          cat /tmp/mlflow.log || true
-
-      - name: Upload demo outputs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tiny-building-seg-ray-demo-outputs
-          path: |
-            outputs/tiny_building_seg_ray/
-            /tmp/mlflow.log
-            /tmp/mlruns/
-            /tmp/mlflow.db
+            ray status || true
+          ' > ray_status.txt || true
 
       - name: Save Ray compose logs
         if: always()
         run: |
-          docker compose -f infra/ray-local/docker-compose.yml logs > ray_compose.log || true
+          docker compose -f infra/ray-local/docker-compose.yml ps -a > ray_compose_ps.txt || true
+          docker compose -f infra/ray-local/docker-compose.yml logs --tail=500 > ray_compose.log || true
 
-      - name: Upload Ray logs
+      - name: Upload Ray demo artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ray-compose-logs
-          path: ray_compose.log
+          name: ray-local-smoke-demo
+          path: |
+            ray_status.txt
+            ray_compose_ps.txt
+            ray_compose.log
 
       - name: Stop Ray cluster
         if: always()

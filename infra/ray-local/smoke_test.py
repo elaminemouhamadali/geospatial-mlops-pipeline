@@ -20,7 +20,7 @@ def inspect_worker(task_id: int, output_dir: str) -> dict:
     import geo_mlops
 
     host = socket.gethostname()
-    node_id = ray.get_runtime_context().get_node_id()
+    node_id = str(ray.get_runtime_context().get_node_id())
 
     out_path = Path(output_dir) / f"ray_smoke_task_{task_id}_{host}.json"
     payload = {
@@ -43,33 +43,43 @@ def inspect_worker(task_id: int, output_dir: str) -> dict:
 
 
 def main() -> None:
-    output_dir = "/outputs/ray-smoke-test"
+    output_dir = os.environ.get(
+        "RAY_SMOKE_OUTPUT_DIR",
+        "/workspace/outputs/ray-smoke-test",
+    )
 
     ray.init(address="auto")
 
-    print("Connected to Ray.")
-    print("Cluster resources:")
-    print(json.dumps(ray.cluster_resources(), indent=2, default=str))
+    try:
+        print("Connected to Ray.")
+        print("Cluster resources:")
+        print(json.dumps(ray.cluster_resources(), indent=2, default=str))
 
-    refs = [inspect_worker.remote(i, output_dir) for i in range(12)]
-    results = ray.get(refs)
+        refs = [inspect_worker.remote(i, output_dir) for i in range(12)]
+        results = ray.get(refs)
 
-    hosts = sorted({r["hostname"] for r in results})
-    node_ids = sorted({r["node_id"] for r in results})
+        hosts = sorted({r["hostname"] for r in results})
+        node_ids = sorted({r["node_id"] for r in results})
 
-    print("\nTask results:")
-    for r in results:
-        print(json.dumps(r, indent=2))
+        print("\nTask results:")
+        for r in results:
+            print(json.dumps(r, indent=2))
 
-    print("\nSummary:")
-    print(f"Unique hosts used: {hosts}")
-    print(f"Unique Ray node IDs used: {node_ids}")
-    print(f"Output dir: {output_dir}")
+        print("\nSummary:")
+        print(f"Unique hosts used: {hosts}")
+        print(f"Unique Ray node IDs used: {node_ids}")
+        print(f"Output dir: {output_dir}")
 
-    if len(hosts) < 2:
-        raise RuntimeError("Smoke test only used one host. Ray may not be distributing tasks across workers.")
+        if len(node_ids) < 2:
+            raise RuntimeError(
+                "Smoke test only used one Ray node. "
+                "Ray may not be distributing tasks across workers."
+            )
 
-    print("\nRay smoke test PASSED.")
+        print("\nRay smoke test PASSED.")
+
+    finally:
+        ray.shutdown()
 
 
 if __name__ == "__main__":
