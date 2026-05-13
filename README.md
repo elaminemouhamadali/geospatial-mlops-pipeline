@@ -1,6 +1,6 @@
 # Geospatial MLOps Pipeline
 
-A contract-driven MLOps framework for remote-sensing workflows, built to move geospatial ML tasks from local experimentation to reproducible Docker, MLflow, Ray-distributed, and Kubernetes-ready execution.
+Contract-driven geospatial MLOps pipeline that turns remote-sensing experiments into reproducible, governed ML lifecycles with MLflow, Ray, Docker, and Kubernetes-ready execution.
 
 [![CI](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/docker-publish.yml)
@@ -8,7 +8,7 @@ A contract-driven MLOps framework for remote-sensing workflows, built to move ge
 [![Demo Ray Local Cluster](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml/badge.svg)](https://github.com/elaminemouhamadali/geospatial-mlops-pipeline/actions/workflows/demo-pipeline-ray.yml)
 
 ## 📌 Quick links
-
+- [🏃 Run in 5 minutes](#tldr)
 - [🚀 What this repo demonstrates](#what-this-repo-demonstrates)
 - [✅ Verified execution paths](#verified-execution-paths)
 - [🏗️ System overview](#system-overview)
@@ -30,6 +30,28 @@ A contract-driven MLOps framework for remote-sensing workflows, built to move ge
 - [🗂️ Repository structure](#repository-structure)
 - [📚 Documentation](#documentation)
 - [🌟 Technical highlights](#technical-highlights)
+
+---
+<a id="tldr"></a>
+## 🏃 Run in 5 minutes
+
+```bash
+git clone https://github.com/elaminemouhamadali/geospatial-mlops-pipeline.git
+cd geospatial-mlops-pipeline
+
+python -m pip install -e ".[dev,ml]"
+
+mlflow server \
+  --backend-store-uri sqlite:////tmp/geo_mlops_mlflow.db \
+  --default-artifact-root /tmp/geo_mlops_mlruns \
+  --host 127.0.0.1 \
+  --port 5000
+
+chmod +x examples/run_full_pipeline_local.sh
+bash examples/run_full_pipeline_local.sh
+```
+
+This tiny demo exercises the same contract-driven lifecycle used by larger geospatial workflows: tiling, splitting, training, validation gating, MLflow registration, golden-set inference, evaluation, and promotion gating.
 
 ---
 <a id="what-this-repo-demonstrates"></a>
